@@ -1,0 +1,212 @@
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    padding: 0;
+    margin: 0;
+}
+
+/* Light Theme */
+:root {
+    --background-color: #f9f9f9;
+    --text-color: #333;
+    --primary-color: #06345C;
+    --secondary-color: #D6821D;
+    --border-color: #ddd;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4rem 2rem;
+    background-color: var(--primary-color);
+    box-shadow: var(--box-shadow);
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    flex-wrap: wrap;
+}
+
+.hero-content {
+    max-width: 50%;
+    flex: 1;
+    padding-right: 2rem;
+}
+
+.hero-content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.hero-content h2 {
+    font-size: 6rem;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.hero-content p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    color: var(--secondary-color);
+}
+
+.cta-buttons .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.primary-btn {
+    background-color: var(--primary-color);
+    margin-right: 1rem;
+}
+
+.primary-btn:hover {
+    background-color: #0056b3;
+}
+
+.secondary-btn {
+    background-color: var(--secondary-color);
+}
+
+.secondary-btn:hover {
+    background-color: #495057;
+}
+
+.hero-image {
+    max-width: 40%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: var(--box-shadow);
+    flex: 1;
+}
+
+/* Features Section Styling */
+.features {
+    padding: 4rem 2rem;
+    background-color: var(--background-color);
+    margin-top: 2rem;
+    border-radius: 10px;
+    box-shadow: var(--box-shadow);
+    text-align: center;
+}
+
+.features h2 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: var(--text-color);
+}
+
+.feature-cards {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.feature-card {
+    text-align: center;
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background-color: var(--background-color);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    flex: 1 1 calc(33.333% - 2rem);
+    margin: 1rem;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card i {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.feature-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.feature-card p {
+    color: var(--secondary-color);
+}
+
+/* About Section Styling */
+.about {
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: var(--background-color);
+    margin-top: 2rem;
+    border-radius: 10px;
+    box-shadow: var(--box-shadow);
+}
+
+.about h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.about p {
+    font-size: 1.2rem;
+    color: var(--secondary-color);
+}
+
+/* Footer Styling */
+footer {
+    text-align: center;
+    padding: 1rem 0;
+    background-color: var(--primary-color);
+    color: white;
+    margin-top: 2rem;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    box-shadow: var(--box-shadow);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .hero {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .hero-content {
+        max-width: 100%;
+        padding-right: 0;
+        margin-bottom: 2rem;
+    }
+
+    .hero-image {
+        max-width: 100%;
+        margin-top: 0;
+    }
+
+    .feature-card {
+        flex: 1 1 calc(50% - 2rem);
+    }
+
+    @media (max-width: 480px) {
+        .feature-card {
+            flex: 1 1 100%;
+        }
+    }
+}

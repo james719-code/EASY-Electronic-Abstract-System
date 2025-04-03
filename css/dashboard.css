@@ -1,0 +1,739 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: 'Arial', sans-serif;
+	line-height: 1.6;
+	transition: background-color 0.3s ease, color 0.3s ease;
+	padding: 0;
+	margin: 0;
+    background-color: var(--background-color); /* Apply background */
+    color: var(--text-color); /* Apply text color */
+    /* Prevent body scroll when modal might be open and scrolling */
+    /* overflow: hidden; /* Consider adding this via JS when modal opens */
+}
+
+/* Light Theme Variables (Ensure these are defined or remove if using defaults) */
+:root {
+	--background-color: #f9f9f9;
+	--text-color: #333;
+	--primary-color: #06345C;
+	--secondary-color: #D6821D; /* Not used in provided CSS, but defined */
+	--border-color: #ddd;
+	--box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark Theme Example (Add if needed) */
+/*
+[data-theme="dark"] {
+    --background-color: #2c3e50;
+    --text-color: #ecf0f1;
+    --border-color: #555;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+}
+*/
+
+.nav_bar {
+	background-color: var(--primary-color);
+	color: white;
+	display: flex;
+	align-items: center;
+	padding: 1rem;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Adjusted shadow */
+    position: sticky; /* Make navbar sticky */
+    top: 0;
+    z-index: 999; /* Ensure navbar is above content but below sidebar overlay */
+}
+
+.menu i {
+	font-size: 1.6rem;
+	cursor: pointer;
+    padding-right: 1rem; /* Add some spacing */
+}
+
+.menu i:hover {
+	color: #ddd;
+}
+
+.nav_name {
+	font-size: 1.6rem;
+	font-weight: bold;
+	flex-grow: 1; /* Allow name to take up space */
+	text-align: center; /* Keep centered */
+    /* Prevent name shifting when menu icon appears/disappears if needed */
+    /* margin-left: -2.6rem; /* Approx width + padding of menu icon */
+}
+
+/*sidebar*/
+.sidebar {
+	width: 250px;
+	background: linear-gradient(135deg, #2c3e50, #34495e);
+	color: #fff;
+	padding: 20px;
+	box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+	transition: transform 0.3s ease; /* Use transform for performance */
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	z-index: 1001;
+    transform: translateX(0); /* Default visible state */
+}
+
+.sidebar.hidden {
+     transform: translateX(-100%); /* Slide out */
+}
+
+.sidebar .fa-times, .sidebar .close-sidebar { /* Target both class and tag */
+	font-size: 1.6rem;
+	cursor: pointer;
+	display: block; /* Make it a block to allow text-align */
+	text-align: right;
+	width: 100%;
+    margin-bottom: 1rem; /* Add space below close icon */
+    color: #ecf0f1; /* Ensure color */
+}
+
+.sidebar .fa-times:hover, .sidebar .close-sidebar:hover {
+	color: #ddd;
+}
+
+
+.sidebar .logo {
+	text-align: center;
+	margin-bottom: 20px;
+}
+
+.sidebar .logo h2 {
+	font-size: 1.5rem;
+	font-weight: bold;
+	color: #ecf0f1;
+	letter-spacing: 1px;
+}
+
+.sidebar nav ul {
+	list-style: none;
+	padding: 0;
+}
+
+.sidebar nav ul li {
+	margin: 15px 0;
+}
+
+.sidebar nav ul li a {
+	color: #ecf0f1;
+	text-decoration: none;
+	display: flex;
+	align-items: center;
+	padding: 10px 15px;
+	border-radius: 5px;
+	transition: background 0.3s ease, color 0.3s ease;
+}
+
+.sidebar nav ul li a i {
+	margin-right: 10px;
+	font-size: 1.2rem;
+    width: 20px; /* Ensure icons align */
+    text-align: center;
+}
+
+.sidebar nav ul li a:hover {
+	background: rgba(255, 255, 255, 0.1);
+	color: #fff;
+}
+
+.sidebar nav ul li a.logout {
+	margin-top: 30px; /* More space before logout */
+	color: #e74c3c;
+	border-top: 1px solid rgba(236, 240, 241, 0.2); /* Lighter border */
+	padding-top: 20px;
+}
+
+.sidebar nav ul li a.logout:hover {
+	color: #ff6b6b;
+    background: rgba(231, 76, 60, 0.1); /* Slight red background on hover */
+}
+
+.sidebar nav ul li a.active {
+	background-color: var(--primary-color); /* Use primary color for active */
+	color: white;
+	font-weight: bold; /* Make active link bold */
+}
+
+.shadow{
+	width: 100vw;
+	height: 100vh;
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 1000;
+	background-color: rgba(0, 0, 0, 0.6); /* Darker overlay */
+	opacity: 1;
+	transition: opacity 0.3s ease;
+}
+
+.shadow.hidden{
+	opacity: 0;
+	pointer-events: none; /* Prevent interaction when hidden */
+}
+
+
+.content {
+	padding: 20px;
+    padding-top: calc(1rem + 1rem + 20px); /* Account for navbar height + padding */
+	margin-left: 250px; /* Default margin when sidebar is open */
+	transition: margin-left 0.3s ease;
+    min-height: calc(100vh - (1rem + 1rem)); /* Full height minus navbar */
+}
+
+/* Adjust content margin when sidebar is hidden */
+/* This requires adding/removing a class on the body or content container via JS */
+body.sidebar-hidden .content {
+    margin-left: 0;
+}
+
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 20px;
+	margin-bottom: 30px; /* More space below cards */
+}
+
+.card {
+	background: #fff; /* Or a variable for card background */
+	padding: 20px;
+	border-radius: 8px;
+	box-shadow: var(--box-shadow);
+	text-align: center;
+	transition: transform 0.3s ease, box-shadow 0.3s ease;
+	border: 1px solid var(--border-color);
+}
+
+.card:hover {
+	transform: translateY(-5px);
+	box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15); /* Enhanced hover shadow */
+}
+
+.card i {
+	font-size: 2.5rem; /* Larger icon */
+	margin-bottom: 15px;
+	color: var(--primary-color); /* Use primary color */
+}
+
+.card h3 {
+	font-size: 1.1rem; /* Slightly smaller heading */
+	margin-bottom: 10px;
+	color: #555; /* Subdued heading color */
+	font-weight: 500; /* Normal bold */
+}
+
+.card p {
+	font-size: 1.8rem; /* Larger number */
+	color: var(--text-color);
+	font-weight: bold;
+}
+
+/* Section Active/Hidden */
+.content > section {
+    display: none; /* Hide sections by default */
+}
+.content > section.active {
+	display: block; /* Show active section */
+    animation: fadeIn 0.5s ease-in-out; /* Optional fade-in */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+
+.recent-activity h2 {
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+    color: #333;
+}
+
+.abstract-list {
+	list-style-type: none;
+	padding: 0;
+    margin-top: 15px;
+}
+.abstract-item {
+	background-color: #fff;
+	margin-bottom: 15px;
+	padding: 15px 20px;
+	border-radius: 8px;
+	border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.abstract-title {
+	font-size: 1.1rem;
+	font-weight: bold;
+	color: var(--primary-color);
+    margin-bottom: 5px;
+}
+.abstract-info {
+	font-size: 0.9rem;
+	color: #555;
+    line-height: 1.4;
+}
+.abstract-info strong {
+    color: #333;
+}
+
+
+/* Manage Sections (Users/Abstracts etc.) */
+#manage-accounts h2, #manage-abstracts h2, #manage-programs h2, #manage-departments h2 {
+    margin-bottom: 20px;
+    font-size: 1.6rem;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 5px;
+}
+
+/* Search/Filter Container */
+.search-filter-container {
+	display: flex;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+	gap: 15px; /* Spacing between items */
+	align-items: center;
+	margin-bottom: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.search-filter-container input[type="text"],
+.search-filter-container select {
+	padding: 10px 12px;
+	border: 1px solid var(--border-color);
+	border-radius: 5px;
+	font-size: 0.95rem;
+	transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    flex-grow: 1; /* Allow input/selects to grow */
+    min-width: 150px; /* Minimum width before wrapping */
+}
+
+.search-filter-container input[type="text"] {
+    min-width: 200px; /* Search bar can be wider */
+}
+
+
+.search-filter-container input[type="text"]:focus,
+.search-filter-container select:focus {
+	border-color: var(--primary-color);
+	outline: none;
+    box-shadow: 0 0 0 2px rgba(6, 52, 92, 0.2); /* Focus indicator */
+}
+
+.search-filter-container button {
+	padding: 10px 20px;
+	background-color: var(--primary-color);
+	color: white;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	transition: background-color 0.3s ease;
+    font-size: 0.95rem;
+    flex-shrink: 0; /* Prevent button from shrinking */
+}
+
+.search-filter-container button:hover {
+	background-color: #04223b; /* Darker shade */
+}
+
+.radio-chip-lay {
+	display: flex;
+	gap: 10px;
+	overflow-x: auto; /* Enable horizontal scroll if needed */
+	padding-bottom: 10px; /* Space for scrollbar if it appears */
+	margin-bottom: 20px;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background-color: #e9ecef; /* Lighter background */
+	color: #495057; /* Darker text */
+	border-radius: 16px; /* More rounded */
+	cursor: pointer;
+	border: 1px solid #ced4da; /* Softer border */
+	font-size: 0.9rem;
+	white-space: nowrap;
+	padding: 6px 12px; /* Adjust padding */
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.chip.active_chip {
+	background-color: var(--primary-color);
+	color: white;
+	border-color: var(--primary-color);
+	font-weight: 500;
+}
+
+.chip:hover:not(.active_chip) { /* Don't change hover for active chip */
+	background-color: #dee2e6;
+    border-color: #adb5bd;
+}
+
+
+/* User/Abstract/Item List */
+.row-lay{
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	overflow: visible; /* Allow menus to overflow */
+}
+
+.user-row { /* Reusable row style */
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background-color: #fff;
+	padding: 15px 20px;
+	border-radius: 8px;
+	border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: box-shadow 0.3s ease;
+}
+.user-row:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+.user-info {
+    flex-grow: 1;
+    margin-right: 15px; /* Space before menu */
+}
+.user-info p {
+	margin: 2px 0; /* Tighter spacing */
+	font-size: 0.95rem;
+    line-height: 1.4;
+    color: #555;
+}
+.user-info p.name, .user-info p.title { /* Main identifier */
+    font-weight: bold;
+    color: #333;
+    font-size: 1.05rem;
+    margin-bottom: 4px;
+}
+.user-info p strong { /* For labels like 'Researchers:' */
+    color: #333;
+    font-weight: 500;
+}
+
+.user-row .menu {
+	position: relative;
+    flex-shrink: 0; /* Prevent menu container shrinking */
+}
+
+.user-row .menu i {
+	cursor: pointer;
+	font-size: 1.1rem; /* Slightly smaller */
+    color: #888;
+    padding: 5px; /* Make it easier to click */
+}
+.user-row .menu i:hover {
+    color: #333;
+}
+
+.menu-options {
+	position: absolute;
+	top: 100%; /* Position below the icon */
+    margin-top: 5px; /* Small gap */
+	right: 0;
+	background-color: white;
+	border-radius: 5px; /* Less rounded */
+	border: 1px solid var(--border-color);
+	list-style: none;
+	padding: 5px 0; /* Padding top/bottom */
+	margin: 0;
+	min-width: 120px; /* Minimum width */
+	z-index: 10;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
+/* Hide menu options using opacity and visibility for transitions */
+.menu-options.hidden {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-5px);
+    transition: opacity 0.2s ease, visibility 0s linear 0.2s, transform 0.2s ease;
+}
+.menu-options {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+     transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+
+.menu-options li {
+	padding: 8px 15px; /* Adjust padding */
+	cursor: pointer;
+	font-size: 0.9rem;
+    color: #333;
+    white-space: nowrap;
+}
+
+.menu-options li:hover {
+	background-color: #f0f0f0;
+}
+
+.menu-options li[class*="delete"] { /* Style delete options */
+    color: #e74c3c;
+}
+.menu-options li[class*="delete"]:hover {
+    background-color: #f8d7da; /* Light red background */
+}
+
+/* Modal Styling */
+.modal {
+	display: flex; /* Use flex */
+	justify-content: center;
+	align-items: center; /* Vertically center */
+	position: fixed;
+	inset: 0; /* Replaces top, left, width, height */
+	background-color: rgba(0, 0, 0, 0.6); /* Slightly darker overlay */
+	z-index: 1000;
+	overflow-y: auto; /* Allow scrolling ONLY if content exceeds viewport */
+	padding: 20px; /* Padding around the modal content */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.modal:not(.hidden) { /* Style when modal is shown */
+	opacity: 1;
+	visibility: visible;
+    transition: opacity 0.3s ease;
+}
+
+
+/* Modal Content */
+.modal-content-wide {
+	background-color: #fff;
+	padding: 25px 30px; /* Adjust padding */
+	border-radius: 8px;
+	width: 100%; /* Full width up to max-width */
+	max-width: 700px; /* Max width */
+	position: relative;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    margin: auto; /* Ensure centered if using align-items: center */
+    /* Add entrance animation */
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal:not(.hidden) .modal-content-wide {
+    transform: scale(1);
+}
+
+/* Close Button */
+.close-modal {
+	position: absolute;
+	top: 10px; /* Closer to top */
+	right: 15px; /* Closer to edge */
+	font-size: 1.8rem; /* Larger */
+	font-weight: bold;
+	line-height: 1;
+	color: #888; /* Grey */
+	cursor: pointer;
+    background: none;
+    border: none;
+    padding: 5px;
+}
+.close-modal:hover {
+    color: #333;
+}
+
+.modal-content-wide h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+/* Grid Layout for Form */
+.grid-container {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Smaller min width */
+	gap: 15px 20px; /* Row and column gap */
+}
+
+/* Form Group Styling */
+.form-group {
+	display: flex;
+	flex-direction: column;
+    margin-bottom: 5px; /* Reduce bottom margin */
+}
+
+.form-group label {
+	font-weight: 500; /* Normal bold */
+	margin-bottom: 6px;
+	font-size: 0.9rem;
+	color: #444;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="date"],
+.form-group input[type="file"],
+.form-group select,
+.form-group textarea {
+	padding: 10px 12px;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+	font-size: 0.95rem;
+    width: 100%; /* Ensure full width */
+}
+.form-group textarea {
+    resize: vertical; /* Allow vertical resize */
+    min-height: 80px;
+}
+
+/* Form Buttons */
+.button-group { /* Use this class for button containers */
+    display: flex;
+    justify-content: flex-end; /* Align buttons right */
+    gap: 10px;
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color); /* Separator line */
+}
+
+/* General Button Styles (reuse if possible) */
+.btn {
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border: none;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.primary-btn {
+    background-color: var(--primary-color);
+    color: white;
+}
+.primary-btn:hover {
+     background-color: #04223b;
+     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.secondary-btn {
+    background-color: #6c757d; /* Bootstrap secondary color */
+    color: white;
+}
+.secondary-btn:hover {
+    background-color: #5a6268;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+
+/* Add Button Main Style */
+.add-button-main{
+	display: inline-flex; /* Align icon and text */
+    align-items: center;
+    justify-content: center;
+	width: auto; /* Fit content */
+    min-width: 150px;
+	background-color: var(--primary-color);
+	color: white;
+	border: none;
+	padding: 10px 20px;
+	border-radius: 5px;
+	cursor: pointer;
+	font-size: 1rem;
+	font-weight: 500;
+	margin-bottom: 20px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    float: right; /* Position to the right */
+}
+.add-button-main i { /* Style icon if added */
+    margin-right: 8px;
+}
+.add-button-main:hover {
+	background-color: #04223b;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
+/* Clear float after add button */
+#manage-accounts::after, #manage-abstracts::after, #manage-programs::after, #manage-departments::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+    .content {
+        margin-left: 0; /* Content takes full width when sidebar might be hidden */
+    }
+    .sidebar {
+        transform: translateX(-100%); /* Ensure sidebar is hidden by default */
+    }
+    .sidebar:not(.hidden) {
+        transform: translateX(0); /* Slide in when not hidden */
+    }
+    body.sidebar-hidden .content { /* Remove margin adjustment class if not used */
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 768px) {
+	.search-filter-container {
+		flex-direction: column;
+        align-items: stretch; /* Stretch items full width */
+		gap: 10px;
+        padding: 10px;
+	}
+
+    .search-filter-container input[type="text"],
+	.search-filter-container select,
+	.search-filter-container button {
+		width: 100%; /* Full width */
+        margin-right: 0; /* Remove right margin */
+	}
+
+    .add-button-main {
+        float: none; /* Don't float on small screens */
+        width: 100%; /* Full width button */
+        margin-bottom: 15px;
+    }
+
+    .modal-content-wide {
+        width: 95%; /* Slightly more width on small screens */
+        padding: 20px;
+    }
+    .grid-container {
+        grid-template-columns: 1fr; /* Stack form fields */
+    }
+    .button-group {
+        flex-direction: column-reverse; /* Stack buttons, primary on bottom */
+    }
+     .button-group .btn {
+        width: 100%;
+     }
+
+     .user-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+     }
+      .user-row .menu {
+        align-self: flex-end; /* Move menu to the right */
+     }
+     .menu-options {
+        /* Adjust positioning if needed */
+     }
+}

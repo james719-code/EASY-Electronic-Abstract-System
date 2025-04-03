@@ -1,0 +1,146 @@
+-- BASE TABLES
+
+-- Log Table (General logging - Primary entry point)
+CREATE TABLE LOG (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    actor_account_id INT NULL,          -- The account performing the action (Can be Admin or User, NULL if system action)
+    action_type VARCHAR(255) NOT NULL,  -- e.g., 'CREATE_DEPARTMENT', 'EDIT_PROGRAM', 'DELETE_ABSTRACT', 'UPDATE_USER'
+    log_type VARCHAR(50),             -- e.g., 'DEPARTMENT', 'PROGRAM', 'ABSTRACT', 'ACCOUNT', 'SYSTEM'
+    time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (actor_account_id) REFERENCES ACCOUNT(account_id) ON DELETE SET NULL -- Keep log even if actor deleted
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Account Table (Supertype for Admin and User)
+CREATE TABLE ACCOUNT (
+account_id INT AUTO_INCREMENT PRIMARY KEY,
+username VARCHAR(50) NOT NULL UNIQUE,
+name VARCHAR(100) NOT NULL,
+password VARCHAR(255) NOT NULL,    -- Store hashed passwords
+sex CHAR(1),
+account_type VARCHAR(10) NOT NULL   -- e.g., 'Admin', 'User'
+-- Consider adding CHECK (account_type IN ('Admin', 'User')) if MySQL version supports it well, or use triggers
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Department Table (Must be created before Program)
+CREATE TABLE DEPARTMENT (
+department_id INT AUTO_INCREMENT PRIMARY KEY,
+department_name VARCHAR(100) NOT NULL,
+department_initials VARCHAR(10) UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Program Table (References Department)
+CREATE TABLE PROGRAM (
+program_id INT AUTO_INCREMENT PRIMARY KEY,
+program_name VARCHAR(100) NOT NULL,
+program_initials VARCHAR(10) UNIQUE,
+department_id INT NOT NULL, -- Foreign Key column linking to Department
+FOREIGN KEY (department_id) REFERENCES DEPARTMENT(department_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Abstract Table (Supertype for Thesis and Dissertation)
+CREATE TABLE ABSTRACT (
+abstract_id INT AUTO_INCREMENT PRIMARY KEY,
+title VARCHAR(255) NOT NULL,
+description TEXT,
+researchers TEXT,
+citation TEXT,
+abstract_type VARCHAR(20) NOT NULL -- e.g., 'Thesis', 'Dissertation'
+-- Consider adding CHECK (abstract_type IN ('Thesis', 'Dissertation')) if MySQL version supports it well, or use triggers
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- SUBTYPE/SPECIALIZATION TABLES
+
+-- Admin Table (Subtype of Account)
+CREATE TABLE ADMIN (
+account_id INT PRIMARY KEY,
+work_id VARCHAR(50) UNIQUE,
+position VARCHAR(100),
+FOREIGN KEY (account_id) REFERENCES ACCOUNT(account_id) ON DELETE CASCADE
+-- Add trigger to ensure ACCOUNT.account_type = 'Admin' for this account_id upon INSERT/UPDATE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User Table (Subtype of Account)
+CREATE TABLE USER (
+account_id INT PRIMARY KEY,
+academic_level VARCHAR(50),
+program_id INT NOT NULL,
+FOREIGN KEY (account_id) REFERENCES ACCOUNT(account_id) ON DELETE CASCADE,
+FOREIGN KEY (program_id) REFERENCES PROGRAM(program_id) ON DELETE RESTRICT
+-- Add trigger to ensure ACCOUNT.account_type = 'User' for this account_id upon INSERT/UPDATE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Thesis Abstract Table (Subtype of Abstract)
+CREATE TABLE THESIS_ABSTRACT (
+abstract_id INT PRIMARY KEY,
+program_id INT NOT NULL,
+FOREIGN KEY (abstract_id) REFERENCES ABSTRACT(abstract_id) ON DELETE CASCADE,
+FOREIGN KEY (program_id) REFERENCES PROGRAM(program_id) ON DELETE RESTRICT
+-- Add trigger to ensure ABSTRACT.abstract_type = 'Thesis' for this abstract_id upon INSERT/UPDATE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dissertation Abstract Table (Subtype of Abstract)
+CREATE TABLE DISSERTATION_ABSTRACT (
+abstract_id INT PRIMARY KEY,
+department_id INT NOT NULL,
+FOREIGN KEY (abstract_id) REFERENCES ABSTRACT(abstract_id) ON DELETE CASCADE,
+FOREIGN KEY (department_id) REFERENCES DEPARTMENT(department_id) ON DELETE RESTRICT
+-- Add trigger to ensure ABSTRACT.abstract_type = 'Dissertation' for this abstract_id upon INSERT/UPDATE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DEPENDENT TABLES (1-to-N relationships)
+
+-- File Detail Table (Associated with an Abstract)
+CREATE TABLE FILE_DETAIL (
+    file_id INT AUTO_INCREMENT PRIMARY KEY,
+    file_location VARCHAR(512) NOT NULL, -- Path or URL where the actual file is stored (e.g., on the server filesystem or cloud storage)
+    file_size BIGINT NOT NULL,         -- File size in bytes (Using BIGINT for potentially large files > 4GB)
+    -- file BLOB NOT NULL,                -- REMOVED: Storing file content directly in DB is often inefficient
+    abstract_id INT NOT NULL,
+    FOREIGN KEY (abstract_id) REFERENCES ABSTRACT(abstract_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ASSOCIATION/LOGGING TABLES (M-to-N relationships)
+
+-- Log Department Detail Table (Stores details for DEPARTMENT log types)
+-- Links a log entry to a specific department and the admin who acted upon it.
+CREATE TABLE LOG_DEPARTMENT (
+    log_id INT PRIMARY KEY,             -- This IS the specific log entry ID, references LOG.log_id
+    department_id INT NOT NULL,         -- The department that was affected
+    admin_account_id INT NOT NULL,      -- The admin account performing the action (FK to ADMIN)
+    FOREIGN KEY (log_id) REFERENCES LOG(log_id) ON DELETE CASCADE,
+    FOREIGN KEY (department_id) REFERENCES DEPARTMENT(department_id) ON DELETE CASCADE, -- Or RESTRICT/SET NULL based on audit needs
+    FOREIGN KEY (admin_account_id) REFERENCES ADMIN(account_id) ON DELETE CASCADE      -- Or RESTRICT/SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Log Program Detail Table (Stores details for PROGRAM log types)
+-- Links a log entry to a specific program and the admin who acted upon it.
+CREATE TABLE LOG_PROGRAM (
+    log_id INT PRIMARY KEY,             -- References LOG.log_id
+    program_id INT NOT NULL,            -- The program that was affected
+    admin_account_id INT NOT NULL,      -- The admin account performing the action (FK to ADMIN)
+    FOREIGN KEY (log_id) REFERENCES LOG(log_id) ON DELETE CASCADE,
+    FOREIGN KEY (program_id) REFERENCES PROGRAM(program_id) ON DELETE CASCADE,        -- Or RESTRICT/SET NULL
+    FOREIGN KEY (admin_account_id) REFERENCES ADMIN(account_id) ON DELETE CASCADE     -- Or RESTRICT/SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Log Abstract Detail Table (Stores details for ABSTRACT log types)
+-- Links a log entry to a specific abstract and the account (Admin or User) who acted upon it.
+CREATE TABLE LOG_ABSTRACT (
+    log_id INT PRIMARY KEY,             -- References LOG.log_id
+    abstract_id INT NOT NULL,           -- The abstract that was affected
+    account_id INT NOT NULL,            -- The account (Admin or User) performing the action (FK to ACCOUNT)
+    FOREIGN KEY (log_id) REFERENCES LOG(log_id) ON DELETE CASCADE,
+    FOREIGN KEY (abstract_id) REFERENCES ABSTRACT(abstract_id) ON DELETE CASCADE,    -- Or RESTRICT/SET NULL
+    FOREIGN KEY (account_id) REFERENCES ACCOUNT(account_id) ON DELETE CASCADE        -- Or RESTRICT/SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Log Account Detail Table (Stores details for ACCOUNT log types - e.g., admin modifying another account)
+-- Links a log entry to the account being modified and the admin performing the action.
+CREATE TABLE LOG_ACCOUNT (
+    log_id INT PRIMARY KEY,             -- References LOG.log_id
+    target_account_id INT NOT NULL,     -- The account that was acted upon (the target)
+    admin_account_id INT NOT NULL,      -- The admin account performing the action (FK to ADMIN)
+    FOREIGN KEY (log_id) REFERENCES LOG(log_id) ON DELETE CASCADE,
+    FOREIGN KEY (target_account_id) REFERENCES ACCOUNT(account_id) ON DELETE CASCADE, -- Or RESTRICT/SET NULL
+    FOREIGN KEY (admin_account_id) REFERENCES ADMIN(account_id) ON DELETE CASCADE     -- Or RESTRICT/SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
