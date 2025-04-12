@@ -13,7 +13,7 @@ if (!isset($_GET['department_id']) || !is_numeric($_GET['department_id'])) {
 $department_id = intval($_GET['department_id']);
 
 try {
-    $sql = "SELECT department_id, department_name, department_initials FROM DEPARTMENT WHERE department_id = :id";
+    $sql = "SELECT department_id, department_name, department_initials FROM department WHERE department_id = :id";
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':id', $department_id, PDO::PARAM_INT);
     $stmt->execute();

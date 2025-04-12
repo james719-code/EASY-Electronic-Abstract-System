@@ -5,7 +5,7 @@
 header('Content-Type: application/json');
 
 // Include database configuration
-include '../api-general/config.php'; // Adjust path if necessary
+include '../api-general/config.php';
 
 // Response array
 $response = [];
@@ -31,13 +31,13 @@ if (isset($_GET['account_id']) && is_numeric($_GET['account_id'])) {
                     adm.work_id,
                     adm.position
                 FROM
-                    ACCOUNT a
+                    account a
                 LEFT JOIN
-                    USER u ON a.account_id = u.account_id AND a.account_type = 'User'
+                    user u ON a.account_id = u.user_id AND a.account_type = 'User'
                 LEFT JOIN
-                    PROGRAM p ON u.program_id = p.program_id -- Join PROGRAM via USER table
+                    program p ON u.program_id = p.program_id
                 LEFT JOIN
-                    ADMIN adm ON a.account_id = adm.account_id AND a.account_type = 'Admin'
+                    admin adm ON a.account_id = adm.admin_id AND a.account_type = 'Admin'
                 WHERE
                     a.account_id = :account_id"; // Use named placeholder
 
@@ -49,8 +49,6 @@ if (isset($_GET['account_id']) && is_numeric($_GET['account_id'])) {
         $account = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($account) {
-            // Account found, return its details
-            // No need to set $response = $account, just echo it directly
              echo json_encode($account);
         } else {
             // Account not found

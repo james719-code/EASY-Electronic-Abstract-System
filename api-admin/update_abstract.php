@@ -1,27 +1,16 @@
 <?php
-// Enable error reporting for debugging (remove or adjust in production)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Start session to access session variables like account_id
 session_start();
 
 // Set content type to JSON
 header('Content-Type: application/json');
 
-// Assuming config.php establishes the PDO connection $conn and defines log_action()
-// Make sure log_action definition is INCLUDED correctly here
-require '../api-general/config.php'; // Adjust path as necessary
+require '../api-general/config.php';
 require '../api-general/functions.php'; 
 
 $response = []; // Initialize response array
 
 // --- Define Upload Directory (MUST be writable by the web server) ---
-// IMPORTANT: Ideally, this should be OUTSIDE your web root for security.
-// If inside, protect it with .htaccess (Deny from all) if using Apache.
-// Example: define('UPLOAD_DIR', '/path/outside/webroot/abstract_uploads/');
-define('UPLOAD_DIR', __DIR__ . '/../pdf/'); // Example relative path (ADJUST AS NEEDED!)
+define('UPLOAD_DIR', __DIR__ . '/../pdf/');
 if (!is_dir(UPLOAD_DIR)) {
     // Attempt to create directory recursively with appropriate permissions
     if (!mkdir(UPLOAD_DIR, 0775, true)) { // Adjust permissions (e.g., 0755) as per your server setup
@@ -60,11 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // --- Input Retrieval and Basic Sanitization/Validation ---
 $abstract_id = filter_input(INPUT_POST, 'abstract_id', FILTER_VALIDATE_INT);
-// Use FILTER_SANITIZE_SPECIAL_CHARS as a safer default than the deprecated one
 $title = trim(filter_input(INPUT_POST, 'title', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
 $researchers = trim(filter_input(INPUT_POST, 'researchers', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
 $citation = trim(filter_input(INPUT_POST, 'citation', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
-$description = trim(filter_input(INPUT_POST, 'description', FILTER_SANITIZE_SPECIAL_CHARS) ?? ''); // Consider allowing limited HTML if needed via a library
+$description = trim(filter_input(INPUT_POST, 'description', FILTER_SANITIZE_SPECIAL_CHARS) ?? ''); 
 
 // Validate abstract_type explicitly
 $new_abstract_type_input = filter_input(INPUT_POST, 'abstract_type', FILTER_DEFAULT); // Get raw value
@@ -166,16 +154,16 @@ if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
 try {
     $conn->beginTransaction();
 
-    // Step 1: Fetch Current Abstract State (Type, Subtype ID, and potentially old file path)
+    // Fetch Current Abstract State (Type, Subtype ID, and potentially old file path)
     $sql_get_current = "SELECT
                            a.abstract_type,
                            ta.program_id AS current_program_id,
                            da.department_id AS current_department_id,
                            fd.file_location AS current_file_location
-                       FROM ABSTRACT a
-                       LEFT JOIN THESIS_ABSTRACT ta ON a.abstract_id = ta.abstract_id
-                       LEFT JOIN DISSERTATION_ABSTRACT da ON a.abstract_id = da.abstract_id
-                       LEFT JOIN FILE_DETAIL fd ON a.abstract_id = fd.abstract_id
+                       FROM abstract a
+                       LEFT JOIN thesis_abstract ta ON a.abstract_id = ta.thesis_id
+                       LEFT JOIN dissertation_abstract da ON a.abstract_id = da.dissertation_id
+                       LEFT JOIN file_detail fd ON a.abstract_id = fd.abstract_id
                        WHERE a.abstract_id = :abstract_id";
     $stmt_get = $conn->prepare($sql_get_current);
     $stmt_get->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
@@ -197,8 +185,8 @@ try {
     }
 
 
-    // Step 2: Update the main ABSTRACT table
-    $sql_update_abstract = "UPDATE ABSTRACT SET
+    // Update the main ABSTRACT table
+    $sql_update_abstract = "UPDATE abstract SET
                                 title = :title,
                                 description = :description,
                                 researchers = :researchers,
@@ -216,22 +204,16 @@ try {
     if (!$stmt_update->execute()) {
         throw new PDOException("Failed to update abstract core details.");
     }
-    if ($stmt_update->rowCount() === 0 && !$new_file_uploaded) {
-        // Optional: Check if anything actually changed if no file was uploaded
-        // This might indicate the abstract wasn't found or no data changed.
-        // You could choose to treat this as success or a specific notice.
-        // error_log("Notice: Update abstract called for ID {$abstract_id}, but no rows affected in ABSTRACT table and no file uploaded.");
-    }
 
 
-    // Step 3: Handle Subtype Changes (Delete/Insert or Update)
+    // Handle Subtype Changes (Delete/Insert or Update)
     if ($new_abstract_type != $old_abstract_type) {
-        // Type has changed: Delete old subtype entry, Insert new subtype entry
 
         // Delete from old subtype table
-        $old_subtype_table = ($old_abstract_type === 'Thesis') ? 'THESIS_ABSTRACT' : (($old_abstract_type === 'Dissertation') ? 'DISSERTATION_ABSTRACT' : null);
+        $old_subtype_table = ($old_abstract_type === 'Thesis') ? 'thesis_abstract' : (($old_abstract_type === 'Dissertation') ? 'dissertation_abstract' : null);
+        $old_type = ($old_abstract_type === 'Thesis') ? 'thesis_id' : (($old_abstract_type === 'Dissertation') ? 'dissertation_id' : null);
         if ($old_subtype_table) {
-            $stmt_del_old = $conn->prepare("DELETE FROM {$old_subtype_table} WHERE abstract_id = :abstract_id");
+            $stmt_del_old = $conn->prepare("DELETE FROM {$old_subtype_table} WHERE {$old_type} = :abstract_id");
             $stmt_del_old->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
             if (!$stmt_del_old->execute()) {
                 throw new PDOException("Failed to remove old subtype record from {$old_subtype_table}.");
@@ -240,7 +222,7 @@ try {
 
         // Insert into new subtype table
         if ($new_abstract_type === 'Thesis') {
-            $stmt_ins_new = $conn->prepare("INSERT INTO THESIS_ABSTRACT (abstract_id, program_id) VALUES (:abstract_id, :program_id)");
+            $stmt_ins_new = $conn->prepare("INSERT INTO thesis_abstract (thesis_id, program_id) VALUES (:abstract_id, :program_id)");
             $stmt_ins_new->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
             $stmt_ins_new->bindParam(':program_id', $program_id, PDO::PARAM_INT); // Use validated $program_id
             if (!$stmt_ins_new->execute()) {
@@ -249,7 +231,7 @@ try {
                  throw new PDOException("Failed to insert new thesis subtype record. Error: " . $stmt_ins_new->errorInfo()[2]);
             }
         } elseif ($new_abstract_type === 'Dissertation') {
-            $stmt_ins_new = $conn->prepare("INSERT INTO DISSERTATION_ABSTRACT (abstract_id, department_id) VALUES (:abstract_id, :department_id)");
+            $stmt_ins_new = $conn->prepare("INSERT INTO dissertation_abstract (dissertation_id, department_id) VALUES (:abstract_id, :department_id)");
             $stmt_ins_new->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
             $stmt_ins_new->bindParam(':department_id', $department_id, PDO::PARAM_INT); // Use validated $department_id
             if (!$stmt_ins_new->execute()) {
@@ -260,7 +242,7 @@ try {
 
     } elseif ($new_abstract_type === 'Thesis' && $program_id != $old_program_id) {
         // Type is Thesis and hasn't changed, but Program ID has changed: Update
-        $stmt_upd_subtype = $conn->prepare("UPDATE THESIS_ABSTRACT SET program_id = :program_id WHERE abstract_id = :abstract_id");
+        $stmt_upd_subtype = $conn->prepare("UPDATE thesis_abstract SET program_id = :program_id WHERE thesis_id = :abstract_id");
         $stmt_upd_subtype->bindParam(':program_id', $program_id, PDO::PARAM_INT);
         $stmt_upd_subtype->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
         if (!$stmt_upd_subtype->execute()) {
@@ -269,7 +251,7 @@ try {
         }
     } elseif ($new_abstract_type === 'Dissertation' && $department_id != $old_department_id) {
         // Type is Dissertation and hasn't changed, but Department ID has changed: Update
-         $stmt_upd_subtype = $conn->prepare("UPDATE DISSERTATION_ABSTRACT SET department_id = :department_id WHERE abstract_id = :abstract_id");
+         $stmt_upd_subtype = $conn->prepare("UPDATE dissertation_abstract SET department_id = :department_id WHERE dissertation_id = :abstract_id");
          $stmt_upd_subtype->bindParam(':department_id', $department_id, PDO::PARAM_INT);
          $stmt_upd_subtype->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
         if (!$stmt_upd_subtype->execute()) {
@@ -277,35 +259,30 @@ try {
             throw new PDOException("Failed to update dissertation department ID. Error: " . $stmt_upd_subtype->errorInfo()[2]);
         }
     }
-    // No action needed if type and relevant subtype ID haven't changed
 
 
-    // Step 4: Handle File Detail Update in DB (if a new file was uploaded)
+    // Handle File Detail Update in DB (if a new file was uploaded)
     if ($new_file_uploaded) {
         // Delete existing file record(s) from DB first
-        $stmt_del_file_db = $conn->prepare("DELETE FROM FILE_DETAIL WHERE abstract_id = :abstract_id");
+        $stmt_del_file_db = $conn->prepare("DELETE FROM file_detail WHERE abstract_id = :abstract_id");
         $stmt_del_file_db->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
-        // We don't necessarily need to throw an error if delete fails (maybe no previous file existed)
         $stmt_del_file_db->execute();
 
         // Insert the new file record into DB
-        $sql_ins_file = "INSERT INTO FILE_DETAIL (file_location, file_size, abstract_id) VALUES (:location, :size, :abstract_id)";
+        $sql_ins_file = "INSERT INTO file_detail (file_location, file_size, abstract_id) VALUES (:location, :size, :abstract_id)";
         $stmt_ins_file_db = $conn->prepare($sql_ins_file);
         $stmt_ins_file_db->bindParam(':location', $new_file_location, PDO::PARAM_STR);
-        // PDO usually handles large integers correctly with PARAM_INT, but PARAM_STR can also work if needed
         $stmt_ins_file_db->bindParam(':size', $new_file_size, PDO::PARAM_INT);
         $stmt_ins_file_db->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
         if (!$stmt_ins_file_db->execute()) {
-            // If DB insert fails, the transaction will roll back. The physical file needs cleanup (handled in catch).
             throw new PDOException("Failed to insert new file DB record.");
         }
     }
 
 
-    // Step 5: Log the Update Action (Using Correct Parameters)
-    // Ensure $conn, $admin_actor_id, $abstract_id are defined correctly above
-    $logged = false; // Initialize to false
-    if (function_exists('log_action')) { // Check if function exists before calling
+    // Log the Update Action 
+    $logged = false; 
+    if (function_exists('log_action')) { 
         $logged = log_action(
             $conn,                  // PDO connection object
             $admin_actor_id,        // Actor ID (admin performing the action)
@@ -315,22 +292,17 @@ try {
             // target_account_id is null for this log type and function handles default
         );
         if (!$logged) {
-            // Log function should handle its own internal errors and possibly rollback (depending on its design)
             error_log("CRITICAL: log_action() function returned false for abstract update ID: {$abstract_id} by admin ID: {$admin_actor_id}. Check log_action implementation and logs.");
-            // Decide if logging failure should prevent the update entirely:
-            // throw new Exception("Failed to log the update action. Operation cancelled."); // Uncomment to make logging mandatory
         }
     } else {
         error_log("CRITICAL: log_action() function not found or not included. Cannot log abstract update for ID: {$abstract_id}.");
-        // Decide if missing log function should prevent the update:
-        // throw new Exception("Logging function is missing. Operation cancelled."); // Uncomment to make logging mandatory
     }
 
 
-    // Step 6: Commit Transaction
+    // Commit Transaction
     $conn->commit();
 
-    // Step 7: Delete Old Physical File (AFTER successful commit)
+    // Delete Old Physical File (AFTER successful commit)
     if ($new_file_uploaded && $old_file_path) {
         // Check if the file exists before attempting deletion
         if (file_exists($old_file_path)) {

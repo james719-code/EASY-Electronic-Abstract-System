@@ -22,9 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         acc.account_type, -- 'Admin' or 'User' from ACCOUNT table
                         usr.program_id -- Get program_id from USER table, will be NULL if not a User
                     FROM
-                        ACCOUNT acc
+                        account acc
                     LEFT JOIN
-                        USER usr ON acc.account_id = usr.account_id AND acc.account_type = 'User'
+                        user usr ON acc.account_id = usr.user_id AND acc.account_type = 'User'
                     WHERE
                         acc.username = :username";
 
@@ -43,12 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Check account type and redirect appropriately
                 if ($account['account_type'] === 'Admin') {
-                    // No specific admin details needed in session for basic auth check,
-                    // but you could add position/work_id if needed elsewhere.
-                    // $_SESSION['position'] = $admin_details['position']; // Example if querying ADMIN table separately
-
                     // Redirect to admin dashboard
-                    header("Location: dashboard.php"); // Adjust filename if needed
+                    header("Location: dashboard.php");
                     exit;
                 } elseif ($account['account_type'] === 'User') {
                     // Store program_id specifically for the user role

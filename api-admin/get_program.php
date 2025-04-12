@@ -21,9 +21,9 @@ try {
                 p.department_id,
                 d.department_name
             FROM
-                PROGRAM p
+                program p
             LEFT JOIN
-                DEPARTMENT d ON p.department_id = d.department_id
+                department d ON p.department_id = d.department_id
             WHERE p.program_id = :program_id";
 
     $stmt = $conn->prepare($sql);

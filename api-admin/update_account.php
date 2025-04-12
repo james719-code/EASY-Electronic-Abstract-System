@@ -1,8 +1,7 @@
 <?php
 // api-admin/update_account.php
 
-// --- Session Handling (Crucial for identifying the actor) ---
-session_start(); // Start the session to access logged-in admin data
+session_start();
 
 header('Content-Type: application/json');
 include '../api-general/config.php'; // Adjust path if necessary
@@ -10,7 +9,6 @@ include '../api-general/config.php'; // Adjust path if necessary
 $response = [];
 
 // --- Authentication Check ---
-// Ensure an admin is logged in. Adjust 'admin_account_id' and 'user_type' session variable names as needed.
 if (!isset($_SESSION['account_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'Admin') {
     http_response_code(401); // Unauthorized
     $response['error'] = "Unauthorized: Admin access required.";
@@ -72,8 +70,8 @@ if ($sex !== null && $sex !== '' && !in_array($sex, ['M', 'F'])) {
 try {
     $conn->beginTransaction();
 
-    // 1. Fetch the current account_type
-    $stmt_check = $conn->prepare("SELECT account_type FROM ACCOUNT WHERE account_id = :account_id");
+    // Fetch the current account_type
+    $stmt_check = $conn->prepare("SELECT account_type FROM account WHERE account_id = :account_id");
     $stmt_check->bindParam(':account_id', $account_id_to_edit, PDO::PARAM_INT);
     $stmt_check->execute();
     $account_details = $stmt_check->fetch(PDO::FETCH_ASSOC);
@@ -87,8 +85,8 @@ try {
     }
     $account_type = $account_details['account_type'];
 
-    // 2. Update the ACCOUNT table
-    $sql_account = "UPDATE ACCOUNT SET username = :username, name = :name, sex = :sex WHERE account_id = :account_id";
+    // Update the ACCOUNT table
+    $sql_account = "UPDATE account SET username = :username, name = :name, sex = :sex WHERE account_id = :account_id";
     $stmt_account = $conn->prepare($sql_account);
     $stmt_account->bindParam(':username', $username);
     $stmt_account->bindParam(':name', $name);
@@ -99,14 +97,14 @@ try {
         throw new PDOException("Failed to update ACCOUNT table.");
     }
 
-    // 3. Conditionally update USER or ADMIN table
+    // Conditionally update USER or ADMIN table
     if ($account_type === 'User') {
         // User specific validation
         if ($program_id === false || $program_id <= 0) {
             throw new Exception("Program is required for User accounts.");
         }
         // Update USER table
-        $sql_user = "UPDATE USER SET academic_level = :academic_level, program_id = :program_id WHERE account_id = :account_id";
+        $sql_user = "UPDATE user SET academic_level = :academic_level, program_id = :program_id WHERE user_id = :account_id";
         $stmt_user = $conn->prepare($sql_user);
         $stmt_user->bindParam(':academic_level', $academic_level);
         $stmt_user->bindParam(':program_id', $program_id, PDO::PARAM_INT);
@@ -118,7 +116,7 @@ try {
 
     } elseif ($account_type === 'Admin') {
          // Update ADMIN table
-         $sql_admin = "UPDATE ADMIN SET work_id = :work_id, position = :position WHERE account_id = :account_id";
+         $sql_admin = "UPDATE admin SET work_id = :work_id, position = :position WHERE admin_id = :account_id";
          $stmt_admin = $conn->prepare($sql_admin);
          $stmt_admin->bindParam(':work_id', $work_id); // Allow empty/null based on schema
          $stmt_admin->bindParam(':position', $position); // Allow empty/null based on schema
@@ -129,9 +127,7 @@ try {
          }
     }
 
-    // ---- If we reach here, the primary updates were successful ----
-
-    // 4. Commit the transaction for the account update
+    // Commit the transaction for the account update
     $conn->commit();
 
     // ---- Account Update successful, now perform logging ----
@@ -141,7 +137,7 @@ try {
         $log_type = 'ACCOUNT';
 
         // Insert into LOG table
-        $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_account_id, :action_type, :log_type)";
+        $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_account_id, :action_type, :log_type)";
         $stmt_log = $conn->prepare($sql_log);
         $stmt_log->bindParam(':actor_account_id', $loggedInAdminId, PDO::PARAM_INT); // Admin performing the action
         $stmt_log->bindParam(':action_type', $action_type);
@@ -152,7 +148,7 @@ try {
         $log_id = $conn->lastInsertId();
 
         // Insert into LOG_ACCOUNT detail table
-        $sql_log_account = "INSERT INTO LOG_ACCOUNT (log_id, target_account_id, admin_account_id) VALUES (:log_id, :target_account_id, :admin_account_id)";
+        $sql_log_account = "INSERT INTO log_account (log_account_id, account_id, admin_id) VALUES (:log_id, :target_account_id, :admin_account_id)";
         $stmt_log_account = $conn->prepare($sql_log_account);
         $stmt_log_account->bindParam(':log_id', $log_id, PDO::PARAM_INT);
         $stmt_log_account->bindParam(':target_account_id', $account_id_to_edit, PDO::PARAM_INT); // The account that was modified
@@ -160,11 +156,7 @@ try {
         $stmt_log_account->execute();
 
     } catch (PDOException $logE) {
-        // Log the logging error, but don't necessarily fail the overall request
-        // since the primary action (account update) succeeded.
         error_log("Logging Error in update_account.php after successful update: " . $logE->getMessage());
-        // You could potentially add a flag to the success response indicating a logging issue, if needed.
-        // $response['warning'] = "Account updated, but logging failed.";
     }
 
     // Send success response (even if logging had an issue, the main task is done)

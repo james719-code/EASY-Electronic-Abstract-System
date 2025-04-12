@@ -1,16 +1,9 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
-// ini_set('error_log', '/path/to/your/php-error.log'); // Optional: specify log file
 
 session_start();
 header('Content-Type: application/json'); // Default header, overridden on success
 
 // --- Configuration ---
-// Define the **base directory** where files are stored.
-// This MUST match the logic used in the 'add abstract' and 'view abstract' scripts.
-// Use realpath to get the canonicalized absolute path for security checks.
 $baseUploadDir = realpath('../pdf/'); // Adjust path if necessary
 if ($baseUploadDir === false) {
     http_response_code(500);
@@ -50,8 +43,8 @@ $abstract_id = $abstract_id_input;
 try {
     // --- Fetch File Location, Size, and Abstract Title ---
     $stmt_file = $conn->prepare("SELECT fd.file_location, fd.file_size, a.title
-                                 FROM FILE_DETAIL fd
-                                 JOIN ABSTRACT a ON fd.abstract_id = a.abstract_id
+                                 FROM file_detail fd
+                                 JOIN abstract a ON fd.abstract_id = a.abstract_id
                                  WHERE fd.abstract_id = :id
                                  LIMIT 1");
     $stmt_file->bindParam(':id', $abstract_id, PDO::PARAM_INT);
@@ -71,7 +64,7 @@ try {
     $abstract_title = $file_details['title'] ?? 'Untitled Abstract';
 
     // --- Security and File System Checks ---
-    // 1. Security: Ensure the path is within the designated upload directory
+    // Security: Ensure the path is within the designated upload directory
     $real_file_location = realpath($file_location);
     if ($real_file_location === false || strpos($real_file_location, $baseUploadDir) !== 0) {
          error_log("Security Alert: Download attempt outside designated upload directory or invalid path. DB Path: {$file_location}, Real Path Attempt: {$real_file_location}, Base Dir: {$baseUploadDir}, Abstract ID: {$abstract_id}, User: {$actor_account_id}");
@@ -80,7 +73,7 @@ try {
          exit;
     }
 
-    // 2. Existence Check
+    // Existence Check
     if (!file_exists($real_file_location)) {
         error_log("File not found on disk for download at location: {$real_file_location} (DB Path: {$file_location}) for Abstract ID: {$abstract_id}");
         http_response_code(404);
@@ -101,7 +94,7 @@ try {
         $conn->beginTransaction();
 
         // 1. Insert into LOG table
-        $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+        $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
         $stmt_log = $conn->prepare($sql_log);
         $stmt_log->bindParam(':actor_id', $actor_account_id, PDO::PARAM_INT);
         $stmt_log->bindValue(':action_type', LOG_ACTION_TYPE_DOWNLOAD_ABSTRACT, PDO::PARAM_STR); // Use specific action type
@@ -110,7 +103,7 @@ try {
         $log_id = $conn->lastInsertId();
 
         // 2. Insert into LOG_ABSTRACT detail table
-        $sql_log_detail = "INSERT INTO LOG_ABSTRACT (log_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
+        $sql_log_detail = "INSERT INTO log_abstract (log_abstract_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
         $stmt_log_detail = $conn->prepare($sql_log_detail);
         $stmt_log_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
         $stmt_log_detail->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT); // The abstract being downloaded
@@ -124,11 +117,9 @@ try {
             $conn->rollBack();
          }
         error_log("Failed to log abstract download (Abstract ID: {$abstract_id}, User ID: {$actor_account_id}): " . $log_e->getMessage());
-        // Continue serving the file even if logging fails.
     }
 
     // --- Send HTTP Headers for File Download ---
-    // Clear any potential previous output
     if (ob_get_level()) {
         ob_end_clean();
     }
@@ -147,7 +138,6 @@ try {
     header('Content-Length: ' . $file_size); // Use size from DB
 
     // --- Output File Content ---
-    // Use readfile() for efficiency
     readfile($real_file_location);
 
     // --- Stop Execution ---

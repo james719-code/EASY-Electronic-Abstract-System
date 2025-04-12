@@ -10,10 +10,8 @@ if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'Admin') {
     echo json_encode(['error' => 'Access denied. Admin privileges required.']);
     exit;
 }
-// -------------------------------------------
 
 // --- Include Database Configuration ---
-// Adjust the path as needed based on your file structure
 require '../api-general/config.php';
 // ------------------------------------
 
@@ -28,8 +26,6 @@ $abstract_id = (int)$_GET['abstract_id'];
 
 try {
     // --- Prepare SQL Query ---
-    // We LEFT JOIN all potential related tables (subtypes and file)
-    // to get all possible information in one go.
     $sql = "SELECT
                 a.abstract_id,
                 a.title,
@@ -43,15 +39,12 @@ try {
                 fd.file_size          -- Also fetch file size if needed later
                 -- p.program_name,    -- Optional: Fetch program name directly (add JOIN below)
                 -- dpt.department_name -- Optional: Fetch department name directly (add JOIN below)
-            FROM ABSTRACT a
-            LEFT JOIN THESIS_ABSTRACT ta ON a.abstract_id = ta.abstract_id
-            LEFT JOIN DISSERTATION_ABSTRACT da ON a.abstract_id = da.abstract_id
-            LEFT JOIN FILE_DETAIL fd ON a.abstract_id = fd.abstract_id -- Assuming one file detail per abstract for edit context
-            -- Optional JOINs if you want names directly (might slightly slow down query)
-            -- LEFT JOIN PROGRAM p ON ta.program_id = p.program_id
-            -- LEFT JOIN DEPARTMENT dpt ON da.department_id = dpt.department_id
+            FROM abstract a
+            LEFT JOIN thesis_abstract ta ON a.abstract_id = ta.thesis_id
+            LEFT JOIN dissertation_abstract da ON a.abstract_id = da.dissertation_id
+            LEFT JOIN file_detail fd ON a.abstract_id = fd.abstract_id 
             WHERE a.abstract_id = :abstract_id
-            LIMIT 1"; // Ensure only one row even if DB inconsistencies exist (e.g., multiple files)
+            LIMIT 1"; 
 
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
@@ -68,7 +61,6 @@ try {
     }
 
     // --- Process Result (e.g., get filename from path) ---
-    // The JS expects 'file_name'. Let's extract it from 'file_location'.
     $abstract['file_name'] = null;
     if (!empty($abstract['file_location'])) {
         $abstract['file_name'] = basename($abstract['file_location']);

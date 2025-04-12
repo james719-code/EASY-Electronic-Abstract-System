@@ -5,11 +5,9 @@ session_start();
 header('Content-Type: application/json'); // Set response type to JSON
 
 // --- Dependencies ---
-// Adjust the path if your config file is located elsewhere
-require_once '../api-general/config.php'; // Provides $conn (PDO connection)
+require_once '../api-general/config.php';
 
 // --- Authentication ---
-// Ensure a user is logged in (Using 'account_type' based on important.txt schema)
 if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'User' || !isset($_SESSION['account_id'])) {
     http_response_code(403); // Forbidden
     echo json_encode(['error' => 'Access denied. User not logged in.']);
@@ -27,10 +25,10 @@ $baseSql = "
         a.abstract_id,
         a.title,
         a.researchers,
-        p.program_name
-    FROM ABSTRACT a
-    JOIN THESIS_ABSTRACT ta ON a.abstract_id = ta.abstract_id
-    JOIN PROGRAM p ON ta.program_id = p.program_id
+        p.department_name
+    FROM abstract a
+    JOIN dissertation_abstract ta ON a.abstract_id = ta.dissertation_id
+    JOIN department p ON ta.department_id = p.department_id
     WHERE a.abstract_type = 'Dissertation' -- Ensure we only get Dissertation abstracts
 ";
 
@@ -39,7 +37,6 @@ $bindings = []; // Use an indexed array for positional placeholders
 
 // Add search term filter (searching title and researchers)
 if (!empty($searchTerm)) {
-    // IMPORTANT: One '?' for title LIKE, another for researchers LIKE
     $whereClauses[] = "(a.title LIKE ? OR a.researchers LIKE ?)";
     $searchTermWildcard = '%' . $searchTerm . '%';
     // Add the value twice to the bindings array, once for each '?'

@@ -1,21 +1,13 @@
 <?php
 // api-admin/fetch_accounts.php
 
-// --- Session Handling (Crucial for checking authorization) ---
-session_start(); // Start the session to access logged-in admin data
+// --- Session Handling ---
+session_start();
 
-// Enable error reporting for debugging (remove/adjust in production)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Set content type to JSON
 header('Content-Type: application/json');
 
-// Assuming config.php establishes the PDO connection $conn
-include '../api-general/config.php'; // Adjust path as necessary
+include '../api-general/config.php'; 
 
-// Response array
 $response = [];
 
 // --- Authentication/Authorization Check ---
@@ -49,13 +41,13 @@ $sql = "SELECT
             usr.academic_level,     -- Will be NULL for Admins
             adm.position            -- Will be NULL for Users
         FROM
-            ACCOUNT acc
+            account acc
         LEFT JOIN
-            USER usr ON acc.account_id = usr.account_id AND acc.account_type = 'User'
+            user usr ON acc.account_id = usr.user_id AND acc.account_type = 'User'
         LEFT JOIN
-            PROGRAM p ON usr.program_id = p.program_id
+            program p ON usr.program_id = p.program_id
         LEFT JOIN
-            ADMIN adm ON acc.account_id = adm.account_id AND acc.account_type = 'Admin'
+            admin adm ON acc.account_id = adm.admin_id AND acc.account_type = 'Admin'
         WHERE 1=1"; // Start with 1=1 for easy AND appending
 
 // Array to hold parameter values for positional placeholders IN ORDER
@@ -67,16 +59,15 @@ if (!empty($searchTerm)) {
     $sql .= " AND (acc.username LIKE ? OR acc.name LIKE ?)";
     // Prepare the search term value
     $searchParamValue = '%' . $searchTerm . '%';
-    // Add the value TWICE to the array, matching the two '?'
     $queryParams[] = $searchParamValue;
     $queryParams[] = $searchParamValue;
 }
 
 // Apply program filter
-$programIdInt = filter_var($programId, FILTER_VALIDATE_INT); // Validate and get int value
+$programIdInt = filter_var($programId, FILTER_VALIDATE_INT);
 if (!empty($programId) && $programIdInt !== false) {
     $sql .= " AND usr.program_id = ?";
-    $queryParams[] = $programIdInt; // Add the integer program ID
+    $queryParams[] = $programIdInt;
 }
 
 // Apply account type filter

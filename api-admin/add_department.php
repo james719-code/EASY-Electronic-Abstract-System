@@ -2,11 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 
-// Assuming config.php establishes the PDO connection $conn
-// Make sure error reporting is suitable for production/development
-// error_reporting(0); // For production
-// ini_set('display_errors', 0); // For production
-include '../api-general/config.php'; // Includes DB connection ($conn)
+include '../api-general/config.php';
 
 $response = [];
 
@@ -26,8 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // --- Input Retrieval and Basic Validation ---
-// Use FILTER_SANITIZE_SPECIAL_CHARS for strings that will be displayed or stored,
-// as FILTER_SANITIZE_STRING is deprecated in PHP 8.1+
 $department_name = trim(filter_input(INPUT_POST, 'department_name', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
 $department_initials = trim(filter_input(INPUT_POST, 'department_initials', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
 
@@ -38,21 +32,13 @@ if (empty($department_name)) {
     echo json_encode($response);
     exit;
 }
-// Optional: Add validation for initials length or format if needed
-// if (!empty($department_initials) && strlen($department_initials) > 10) {
-//     http_response_code(400);
-//     $response['error'] = "Department Initials cannot exceed 10 characters.";
-//     echo json_encode($response);
-//     exit;
-// }
-
 
 // --- Database Operation ---
 try {
     $conn->beginTransaction();
 
     // 1. Insert the new department
-    $sql_insert_dept = "INSERT INTO DEPARTMENT (department_name, department_initials) VALUES (:name, :initials)";
+    $sql_insert_dept = "INSERT INTO department (department_name, department_initials) VALUES (:name, :initials)";
     $stmt_insert_dept = $conn->prepare($sql_insert_dept);
     $stmt_insert_dept->bindParam(':name', $department_name, PDO::PARAM_STR);
 
@@ -67,14 +53,13 @@ try {
         // Throw exception to be caught below, triggering rollback
         throw new PDOException("Failed to insert department data.");
     }
+
     $new_dept_id = $conn->lastInsertId();
 
-    // --- Logging Actions (New Structure) ---
-
-    // 2. Insert into the main LOG table
-    $log_action_type = 'CREATE_DEPARTMENT'; // Standardized action type
-    $log_type = 'DEPARTMENT';            // Specific log category
-    $sql_log_main = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+    //Insert into the main LOG table
+    $log_action_type = 'CREATE_DEPARTMENT';
+    $log_type = 'DEPARTMENT';
+    $sql_log_main = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
     $stmt_log_main = $conn->prepare($sql_log_main);
     $stmt_log_main->bindParam(':actor_id', $admin_actor_id, PDO::PARAM_INT);
     $stmt_log_main->bindParam(':action_type', $log_action_type, PDO::PARAM_STR);
@@ -83,14 +68,15 @@ try {
     if (!$stmt_log_main->execute()) {
         throw new PDOException("Failed to insert into main LOG table.");
     }
-    $new_log_id = $conn->lastInsertId(); // Get the ID of the general log entry
 
-    // 3. Insert into the specific LOG_DEPARTMENT table
-    $sql_log_dept_detail = "INSERT INTO LOG_DEPARTMENT (log_id, department_id, admin_account_id) VALUES (:log_id, :dept_id, :admin_id)";
+    $new_log_id = $conn->lastInsertId();
+
+    //Insert into the specific LOG_DEPARTMENT table
+    $sql_log_dept_detail = "INSERT INTO log_department (log_department_id, department_id, admin_id) VALUES (:log_id, :dept_id, :admin_id)";
     $stmt_log_dept_detail = $conn->prepare($sql_log_dept_detail);
     $stmt_log_dept_detail->bindParam(':log_id', $new_log_id, PDO::PARAM_INT);
     $stmt_log_dept_detail->bindParam(':dept_id', $new_dept_id, PDO::PARAM_INT);
-    $stmt_log_dept_detail->bindParam(':admin_id', $admin_actor_id, PDO::PARAM_INT); // Admin performing the action
+    $stmt_log_dept_detail->bindParam(':admin_id', $admin_actor_id, PDO::PARAM_INT);
 
     if (!$stmt_log_dept_detail->execute()) {
         throw new PDOException("Failed to insert into LOG_DEPARTMENT details table.");

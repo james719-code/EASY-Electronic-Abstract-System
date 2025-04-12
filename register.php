@@ -1,10 +1,5 @@
 <?php
-session_start(); // Start session at the very beginning
-// Enable error reporting for debugging (remove/adjust in production)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
+session_start();
 include 'api-general/config.php'; // Adjust path if needed
 
 $error_message = null; // Initialize error message
@@ -12,7 +7,7 @@ $programs = []; // Initialize programs array
 
 // --- Fetch Programs for Dropdown ---
 try {
-    $stmt_programs = $conn->query("SELECT program_id, program_name FROM PROGRAM ORDER BY program_name ASC");
+    $stmt_programs = $conn->query("SELECT program_id, program_name FROM program ORDER BY program_name ASC");
     $programs = $stmt_programs->fetchAll(PDO::FETCH_ASSOC);
     // $stmt_programs->closeCursor(); // Not strictly needed with fetchAll
 } catch (PDOException $e) {
@@ -22,7 +17,6 @@ try {
 
 // --- Handle Form Submission ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Get and sanitize input data (Using FILTER_DEFAULT instead of deprecated FILTER_SANITIZE_STRING)
     $username = trim(filter_input(INPUT_POST, 'username', FILTER_DEFAULT) ?? '');
     $password = $_POST['password'] ?? ''; // Don't trim passwords
     $retype_password = $_POST['retype_password'] ?? '';
@@ -50,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Start transaction
             $conn->beginTransaction();
 
-            // 1. Check if username already exists in ACCOUNT table
-            $stmt_check = $conn->prepare("SELECT 1 FROM ACCOUNT WHERE username = :username");
+            // Check if username already exists in ACCOUNT table
+            $stmt_check = $conn->prepare("SELECT 1 FROM account WHERE username = :username");
             $stmt_check->bindParam(':username', $username);
             $stmt_check->execute();
 
@@ -73,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // 3. Insert into ACCOUNT table
-                $sql_account = "INSERT INTO ACCOUNT (username, password, name, sex, account_type) VALUES (:username, :password, :name, :sex, 'User')";
+                $sql_account = "INSERT INTO account (username, password, name, sex, account_type) VALUES (:username, :password, :name, :sex, 'User')";
                 $stmt_account = $conn->prepare($sql_account);
                 $stmt_account->bindParam(':username', $username);
                 $stmt_account->bindParam(':password', $hashed_password);
@@ -91,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // 4. Insert into USER table
-                $sql_user = "INSERT INTO USER (account_id, program_id, academic_level) VALUES (:account_id, :program_id, :academic_level)";
+                $sql_user = "INSERT INTO user (user_id, program_id, academic_level) VALUES (:account_id, :program_id, :academic_level)";
                 $stmt_user = $conn->prepare($sql_user);
                 $stmt_user->bindParam(':account_id', $new_account_id, PDO::PARAM_INT);
                 $stmt_user->bindParam(':program_id', $program_id, PDO::PARAM_INT);
@@ -104,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // 5. Log the Registration Action in LOG table
                 $action_type = 'CREATE_USER_ACCOUNT';
                 $log_type = 'ACCOUNT';
-                $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+                $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
                 $stmt_log = $conn->prepare($sql_log);
                 // The actor is the user who just registered
                 $stmt_log->bindParam(':actor_id', $new_account_id, PDO::PARAM_INT);

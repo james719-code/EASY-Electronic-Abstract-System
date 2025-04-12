@@ -27,7 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // --- Input Retrieval and Validation ---
 $program_id = filter_input(INPUT_POST, 'program_id', FILTER_VALIDATE_INT);
-// Replace deprecated FILTER_SANITIZE_STRING with FILTER_DEFAULT
 $program_name = trim(filter_input(INPUT_POST, 'program_name', FILTER_DEFAULT) ?? '');
 $program_initials = trim(filter_input(INPUT_POST, 'program_initials', FILTER_DEFAULT) ?? '');
 $department_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT);
@@ -58,8 +57,8 @@ if (!empty($errors)) {
 try {
     $conn->beginTransaction();
 
-    // 1. Check if the program to update actually exists
-    $stmt_check_prog = $conn->prepare("SELECT 1 FROM PROGRAM WHERE program_id = :prog_id FOR UPDATE"); // Lock row
+    // Check if the program to update actually exists
+    $stmt_check_prog = $conn->prepare("SELECT 1 FROM program WHERE program_id = :prog_id FOR UPDATE"); // Lock row
     $stmt_check_prog->bindParam(':prog_id', $program_id, PDO::PARAM_INT);
     $stmt_check_prog->execute();
     if ($stmt_check_prog->fetchColumn() === false) {
@@ -70,8 +69,8 @@ try {
         exit;
     }
 
-    // 2. Check if the *new* selected department exists
-    $stmt_check_dept = $conn->prepare("SELECT 1 FROM DEPARTMENT WHERE department_id = :dept_id");
+    // Check if the *new* selected department exists
+    $stmt_check_dept = $conn->prepare("SELECT 1 FROM department WHERE department_id = :dept_id");
     $stmt_check_dept->bindParam(':dept_id', $department_id, PDO::PARAM_INT);
     $stmt_check_dept->execute();
     if ($stmt_check_dept->fetchColumn() === false) {
@@ -82,8 +81,8 @@ try {
         exit;
     }
 
-    // 3. Update Program
-    $sql_update = "UPDATE PROGRAM SET program_name = :name, program_initials = :initials, department_id = :dept_id WHERE program_id = :program_id";
+    // Update Program
+    $sql_update = "UPDATE program SET program_name = :name, program_initials = :initials, department_id = :dept_id WHERE program_id = :program_id";
     $stmt_update = $conn->prepare($sql_update);
     $stmt_update->bindParam(':name', $program_name, PDO::PARAM_STR);
     $stmt_update->bindParam(':initials', $program_initials, PDO::PARAM_STR);
@@ -95,16 +94,8 @@ try {
         throw new PDOException("Failed to execute program update statement.");
     }
 
-    // Optional: Check if any rows were actually affected.
-    // If rowCount is 0, it means the program existed but no data was changed.
-    // You might choose to still log this as an attempted update or return a specific message.
-    // For simplicity here, we proceed even if 0 rows affected, assuming execute() succeeded.
-    // if ($stmt_update->rowCount() == 0) {
-    //     // Handle case where no data actually changed
-    // }
-
-    // 4. Insert into LOG table
-    $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+    // Insert into LOG table
+    $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
     $stmt_log = $conn->prepare($sql_log);
     $stmt_log->bindParam(':actor_id', $admin_actor_id, PDO::PARAM_INT);
     $stmt_log->bindValue(':action_type', LOG_ACTION_TYPE_UPDATE_PROGRAM, PDO::PARAM_STR);
@@ -115,8 +106,8 @@ try {
     }
     $log_id = $conn->lastInsertId();
 
-    // 5. Insert into LOG_PROGRAM detail table
-    $sql_log_detail = "INSERT INTO LOG_PROGRAM (log_id, program_id, admin_account_id) VALUES (:log_id, :program_id, :admin_id)";
+    // Insert into LOG_PROGRAM detail table
+    $sql_log_detail = "INSERT INTO log_program (log_program_id, program_id, admin_id) VALUES (:log_id, :program_id, :admin_id)";
     $stmt_log_detail = $conn->prepare($sql_log_detail);
     $stmt_log_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
     $stmt_log_detail->bindParam(':program_id', $program_id, PDO::PARAM_INT); // The program that was affected
@@ -127,7 +118,7 @@ try {
         throw new PDOException("Failed to insert program log details into LOG_PROGRAM table.");
     }
 
-    // 6. Commit Transaction
+    // Commit Transaction
     $conn->commit();
     http_response_code(200); // OK for successful update
     $response['success'] = "Program updated successfully.";
@@ -154,9 +145,6 @@ try {
     echo json_encode($response);
 
 } catch (Exception $e) {
-    // Catch non-PDO exceptions (like the ones we threw manually for not found)
-    // Note: Our specific "not found" exceptions are now handled *before* this catch block.
-    // This block would catch other unexpected general exceptions.
     if ($conn->inTransaction()) $conn->rollBack();
     http_response_code(500); // Treat unexpected exceptions as server errors
     error_log("General Error in Update Program: " . $e->getMessage());

@@ -53,7 +53,7 @@ function log_action(PDO $dbConn, int $actor_id, string $action_type, string $log
         // if (!$isExternalTransaction) { $dbConn->beginTransaction(); } // Optional: Uncomment if standalone logging transaction is needed
 
         // 1. Insert into main LOG table
-        $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type, time) VALUES (:actor_id, :action_type, :log_type, CURRENT_TIMESTAMP)";
+        $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type, time) VALUES (:actor_id, :action_type, :log_type, CURRENT_TIMESTAMP)";
         $stmt_log = $dbConn->prepare($sql_log);
         $stmt_log->bindParam(':actor_id', $actor_id, PDO::PARAM_INT);
         $stmt_log->bindParam(':action_type', $action_type, PDO::PARAM_STR);
@@ -78,7 +78,7 @@ function log_action(PDO $dbConn, int $actor_id, string $action_type, string $log
         switch ($log_type) {
             case LOG_TYPE_ABSTRACT: // Using constant
                 if ($target_entity_id === null || $target_entity_id <= 0) throw new InvalidArgumentException("Target Entity ID (abstract_id) is required and must be positive for ABSTRACT log type.");
-                $detail_sql = "INSERT INTO LOG_ABSTRACT (log_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
+                $detail_sql = "INSERT INTO log_abstract (log_abstract_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
                 $stmt_detail = $dbConn->prepare($detail_sql);
                 $stmt_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
                 $stmt_detail->bindParam(':abstract_id', $target_entity_id, PDO::PARAM_INT);
@@ -88,7 +88,7 @@ function log_action(PDO $dbConn, int $actor_id, string $action_type, string $log
             case LOG_TYPE_PROGRAM: // Using constant
                  if ($target_entity_id === null || $target_entity_id <= 0) throw new InvalidArgumentException("Target Entity ID (program_id) is required and must be positive for PROGRAM log type.");
                  // Ensure $actor_id IS an admin here (or adjust based on requirements)
-                 $detail_sql = "INSERT INTO LOG_PROGRAM (log_id, program_id, admin_account_id) VALUES (:log_id, :program_id, :admin_account_id)";
+                 $detail_sql = "INSERT INTO log_program (log_program_id, program_id, admin_id) VALUES (:log_id, :program_id, :admin_account_id)";
                  $stmt_detail = $dbConn->prepare($detail_sql);
                  $stmt_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
                  $stmt_detail->bindParam(':program_id', $target_entity_id, PDO::PARAM_INT);
@@ -98,7 +98,7 @@ function log_action(PDO $dbConn, int $actor_id, string $action_type, string $log
              case LOG_TYPE_DEPARTMENT: // Using constant
                 if ($target_entity_id === null || $target_entity_id <= 0) throw new InvalidArgumentException("Target Entity ID (department_id) is required and must be positive for DEPARTMENT log type.");
                 // Ensure $actor_id IS an admin here
-                $detail_sql = "INSERT INTO LOG_DEPARTMENT (log_id, department_id, admin_account_id) VALUES (:log_id, :department_id, :admin_account_id)";
+                $detail_sql = "INSERT INTO log_department (log_department_id, department_id, admin_id) VALUES (:log_id, :department_id, :admin_account_id)";
                 $stmt_detail = $dbConn->prepare($detail_sql);
                 $stmt_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
                 $stmt_detail->bindParam(':department_id', $target_entity_id, PDO::PARAM_INT);
@@ -108,15 +108,14 @@ function log_action(PDO $dbConn, int $actor_id, string $action_type, string $log
             case LOG_TYPE_ACCOUNT: // Using constant
                  if ($target_account_id === null || $target_account_id <= 0) throw new InvalidArgumentException("Target Account ID is required and must be positive for ACCOUNT log type.");
                  // Ensure $actor_id IS an admin here
-                 $detail_sql = "INSERT INTO LOG_ACCOUNT (log_id, target_account_id, admin_account_id) VALUES (:log_id, :target_account_id, :admin_account_id)";
+                 $detail_sql = "INSERT INTO log_account (log_account_id, account_id, admin_id) VALUES (:log_id, :target_account_id, :admin_account_id)";
                  $stmt_detail = $dbConn->prepare($detail_sql);
                  $stmt_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
                  $stmt_detail->bindParam(':target_account_id', $target_account_id, PDO::PARAM_INT);
                  $stmt_detail->bindParam(':admin_account_id', $actor_id, PDO::PARAM_INT); // Assumes actor is admin
                 break;
 
-             case LOG_TYPE_SYSTEM: // Using constant
-                // System logs might not need a detail entry
+             case LOG_TYPE_SYSTEM: 
                 break;
 
             default:

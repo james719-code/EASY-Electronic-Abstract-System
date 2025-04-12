@@ -1,21 +1,21 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 include '../api-general/config.php';
 
-// Ensure errors are logged
-// error_reporting(E_ALL); // Set in php.ini ideally
-// ini_set('display_errors', 0); // Set in php.ini ideally
+$response = []; 
+$queryParams = []; 
 
-// No login required for fetching general list usually, but add if needed
-// session_start();
-// if (!isset($_SESSION['role']) || ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'user')) { ... }
-
-$response = []; // Initialize response array for potential errors
-$queryParams = []; // Array to hold values for positional placeholders
+// --- Authentication/Authorization Check (Using 'role' as established) ---
+if (!isset($_SESSION['account_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'Admin') {
+    http_response_code(403); // Use 403 Forbidden as per original script
+    $response['error'] = "Access denied. Admin privileges required.";
+    echo json_encode($response);
+    exit;
+}
 
 try {
     // --- Input Retrieval ---
-    // Use trim and null coalescing operator
     $search = trim($_GET['search'] ?? '');
 
     // Use filter_input for integer validation
@@ -32,9 +32,9 @@ try {
                 p.department_id,
                 d.department_name
             FROM
-                PROGRAM p
+                program p
             LEFT JOIN
-                DEPARTMENT d ON p.department_id = d.department_id
+                department d ON p.department_id = d.department_id
             WHERE 1=1"; // Start WHERE clause, always true
 
     // Conditionally add search criteria
@@ -43,7 +43,6 @@ try {
         $sql .= " AND (p.program_name LIKE ? OR p.program_initials LIKE ?)";
         // Prepare the search term ONCE
         $searchTerm = '%' . $search . '%';
-        // Add the search term TWICE to the array, matching the two '?'
         $queryParams[] = $searchTerm;
         $queryParams[] = $searchTerm;
     }

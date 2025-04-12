@@ -22,8 +22,8 @@ if ($department_id === false || $department_id <= 0) {
 try {
     $conn->beginTransaction();
 
-    // 1. Get department info (ensure it exists and get name for msg)
-    $stmt_get = $conn->prepare("SELECT department_name FROM DEPARTMENT WHERE department_id = :id");
+    // Get department info (ensure it exists and get name for msg)
+    $stmt_get = $conn->prepare("SELECT department_name FROM department WHERE department_id = :id");
     $stmt_get->bindParam(':id', $department_id, PDO::PARAM_INT);
     $stmt_get->execute();
     $dept_info = $stmt_get->fetch(PDO::FETCH_ASSOC);
@@ -35,10 +35,10 @@ try {
 
     // --- PREPARE LOGGING ACTIONS (BEFORE DELETE) ---
 
-    // 2. Insert into the main LOG table
+    // Insert into the main LOG table
     $log_action_type = 'DELETE_DEPARTMENT';
     $log_type = 'DEPARTMENT';
-    $sql_log_main = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+    $sql_log_main = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
     $stmt_log_main = $conn->prepare($sql_log_main);
     $stmt_log_main->bindParam(':actor_id', $admin_actor_id, PDO::PARAM_INT);
     $stmt_log_main->bindParam(':action_type', $log_action_type, PDO::PARAM_STR);
@@ -48,11 +48,11 @@ try {
         // If this fails, transaction rolls back automatically via exception
         throw new PDOException("Failed to insert into main LOG table during department delete prep.");
     }
+
     $new_log_id = $conn->lastInsertId();
 
-    // 3. Insert into the specific LOG_DEPARTMENT table
-    // Department ID still exists at this point in the transaction
-    $sql_log_dept_detail = "INSERT INTO LOG_DEPARTMENT (log_id, department_id, admin_account_id) VALUES (:log_id, :dept_id, :admin_id)";
+    // Insert into the specific LOG_DEPARTMENT table
+    $sql_log_dept_detail = "INSERT INTO log_department (log_department_id, department_id, admin_id) VALUES (:log_id, :dept_id, :admin_id)";
     $stmt_log_dept_detail = $conn->prepare($sql_log_dept_detail);
     $stmt_log_dept_detail->bindParam(':log_id', $new_log_id, PDO::PARAM_INT);
     $stmt_log_dept_detail->bindParam(':dept_id', $department_id, PDO::PARAM_INT);
@@ -65,8 +65,8 @@ try {
 
     // --- END LOGGING ACTIONS ---
 
-    // 4. Now, attempt to delete the department
-    $stmt_del = $conn->prepare("DELETE FROM DEPARTMENT WHERE department_id = :id");
+    // Now, attempt to delete the department
+    $stmt_del = $conn->prepare("DELETE FROM department WHERE department_id = :id");
     $stmt_del->bindParam(':id', $department_id, PDO::PARAM_INT);
 
     if (!$stmt_del->execute()) {
@@ -74,7 +74,7 @@ try {
          throw new PDOException("Failed to execute department delete statement. Potential FK conflict?");
     }
 
-    // 5. Check if deletion actually happened (rowCount check is crucial here)
+    // Check if deletion actually happened (rowCount check is crucial here)
     if ($stmt_del->rowCount() > 0) {
         // If delete succeeded (and previous steps did too), commit everything
         $conn->commit();
@@ -85,9 +85,6 @@ try {
         $response['department_id'] = $department_id;
         echo json_encode($response);
     } else {
-         // SELECT found it, logging inserted, but DELETE affected 0 rows.
-         // This implies it was deleted *between* the SELECT and DELETE by someone else.
-         // We need to roll back the logging inserts.
          throw new Exception("Department with ID " . $department_id . " could not be deleted (possibly removed concurrently).", 409); // 409 Conflict
     }
 

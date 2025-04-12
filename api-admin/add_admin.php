@@ -1,21 +1,20 @@
 <?php
-// api-admin/add_admin.php (Assuming this path)
+//add_admin.php - PHP for adding admin
 
 session_start();
 header('Content-Type: application/json');
-include '../api-general/config.php'; // Adjust path if necessary
-
+include '../api-general/config.php';
 $response = [];
 
 // --- Authentication & Authorization ---
-// Use the consistent session variables from login.php and other API scripts
 if (!isset($_SESSION['account_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'Admin') {
     http_response_code(401); // Unauthorized (use 401 or 403 as appropriate)
     $response['error'] = "Access denied. Admin privileges required.";
     echo json_encode($response);
     exit;
 }
-$loggedInAdminId = $_SESSION['account_id']; // The admin *performing* this action
+
+$loggedInAdminId = $_SESSION['account_id'];
 
 // --- Check Method ---
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -26,14 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // --- Input Retrieval and Basic Sanitization ---
-// Replace FILTER_SANITIZE_STRING with FILTER_DEFAULT or remove filter if only trimming
 $username = trim(filter_input(INPUT_POST, 'username', FILTER_DEFAULT) ?? '');
 $name = trim(filter_input(INPUT_POST, 'name', FILTER_DEFAULT) ?? '');
-$password = $_POST['password'] ?? ''; // Get password directly for hashing
+$password = $_POST['password'] ?? '';
 $confirm_password = $_POST['confirm_password'] ?? '';
-$sex = filter_input(INPUT_POST, 'sex', FILTER_DEFAULT); // Use FILTER_DEFAULT
-$work_id = trim(filter_input(INPUT_POST, 'work_id', FILTER_DEFAULT) ?? ''); // Use FILTER_DEFAULT
-$position = trim(filter_input(INPUT_POST, 'position', FILTER_DEFAULT) ?? ''); // Use FILTER_DEFAULT
+$sex = filter_input(INPUT_POST, 'sex', FILTER_DEFAULT);
+$work_id = trim(filter_input(INPUT_POST, 'work_id', FILTER_DEFAULT) ?? '');
+$position = trim(filter_input(INPUT_POST, 'position', FILTER_DEFAULT) ?? '');
 
 
 // --- Basic Validation ---
@@ -71,7 +69,7 @@ try {
     $conn->beginTransaction();
 
     // 1. Insert into ACCOUNT table
-    $sql_account = "INSERT INTO ACCOUNT (username, name, password, sex, account_type) VALUES (:username, :name, :password, :sex, 'Admin')";
+    $sql_account = "INSERT INTO account (username, name, password, sex, account_type) VALUES (:username, :name, :password, :sex, 'Admin')";
     $stmt_account = $conn->prepare($sql_account);
     $stmt_account->bindParam(':username', $username);
     $stmt_account->bindParam(':name', $name);
@@ -86,10 +84,11 @@ try {
             throw new PDOException("Failed to insert into ACCOUNT table. Error: " . $stmt_account->errorInfo()[2]);
         }
     }
-    $new_account_id = $conn->lastInsertId(); // Get the ID of the account just created
 
-    // 2. Insert into ADMIN table (Subtype)
-    $sql_admin = "INSERT INTO ADMIN (account_id, work_id, position) VALUES (:account_id, :work_id, :position)";
+    $new_account_id = $conn->lastInsertId();
+
+    //Insert into ADMIN table (Subtype)
+    $sql_admin = "INSERT INTO admin (admin_id, work_id, position) VALUES (:account_id, :work_id, :position)";
     $stmt_admin = $conn->prepare($sql_admin);
     $stmt_admin->bindParam(':account_id', $new_account_id, PDO::PARAM_INT);
     // Bind parameters that might be empty/null
@@ -106,12 +105,12 @@ try {
         }
     }
 
-    // 3. Log the Action (Insert into LOG and LOG_ACCOUNT)
+    //Log the Action (Insert into LOG and LOG_ACCOUNT)
     $action_type = 'CREATE_ADMIN_ACCOUNT'; // Be specific
     $log_type = 'ACCOUNT';                 // Matches the detail table focus
 
     // Insert into base LOG table
-    $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+    $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
     $stmt_log = $conn->prepare($sql_log);
     $stmt_log->bindParam(':actor_id', $loggedInAdminId, PDO::PARAM_INT); // The admin performing the action
     $stmt_log->bindParam(':action_type', $action_type);
@@ -119,20 +118,20 @@ try {
     if (!$stmt_log->execute()) {
         throw new PDOException("Failed to insert into LOG table during admin creation.");
     }
-    $log_id = $conn->lastInsertId(); // Get the ID of the log entry
+
+    $log_id = $conn->lastInsertId();
 
     // Insert into LOG_ACCOUNT detail table
-    $sql_log_account = "INSERT INTO LOG_ACCOUNT (log_id, target_account_id, admin_account_id) VALUES (:log_id, :target_id, :admin_id)";
+    $sql_log_account = "INSERT INTO log_account (log_account_id, account_id, admin_id) VALUES (:log_id, :target_id, :admin_id)";
     $stmt_log_account = $conn->prepare($sql_log_account);
     $stmt_log_account->bindParam(':log_id', $log_id, PDO::PARAM_INT);
-    $stmt_log_account->bindParam(':target_id', $new_account_id, PDO::PARAM_INT); // The account that was created
-    $stmt_log_account->bindParam(':admin_id', $loggedInAdminId, PDO::PARAM_INT);  // The admin who performed the action
+    $stmt_log_account->bindParam(':target_id', $new_account_id, PDO::PARAM_INT); 
+    $stmt_log_account->bindParam(':admin_id', $loggedInAdminId, PDO::PARAM_INT);
     if (!$stmt_log_account->execute()) {
          throw new PDOException("Failed to insert into LOG_ACCOUNT table during admin creation.");
     }
 
     // --- Commit Transaction ---
-    // If all inserts (ACCOUNT, ADMIN, LOG, LOG_ACCOUNT) were successful
     $conn->commit();
 
     http_response_code(201); // 201 Created is suitable for successful resource creation

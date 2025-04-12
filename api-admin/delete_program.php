@@ -41,8 +41,8 @@ $program_name_deleted = 'ID:' . $program_id; // Default name for logging context
 try {
     $conn->beginTransaction();
 
-    // 1. Check if program exists and get its name (lock row optionally)
-    $stmt_get = $conn->prepare("SELECT program_name FROM PROGRAM WHERE program_id = :id FOR UPDATE");
+    // Check if program exists and get its name (lock row optionally)
+    $stmt_get = $conn->prepare("SELECT program_name FROM program WHERE program_id = :id FOR UPDATE");
     $stmt_get->bindParam(':id', $program_id, PDO::PARAM_INT);
     $stmt_get->execute();
     $program_info = $stmt_get->fetch(PDO::FETCH_ASSOC);
@@ -56,9 +56,8 @@ try {
     }
     $program_name_deleted = $program_info['program_name']; // Get actual name
 
-    // 2. Attempt to Delete Program
-    // This is where a FK constraint violation (like 1451) might occur if other tables reference this program.
-    $stmt_del = $conn->prepare("DELETE FROM PROGRAM WHERE program_id = :id");
+    // Attempt to Delete Program
+    $stmt_del = $conn->prepare("DELETE FROM program WHERE program_id = :id");
     $stmt_del->bindParam(':id', $program_id, PDO::PARAM_INT);
 
     if (!$stmt_del->execute()) {
@@ -67,7 +66,7 @@ try {
         throw new PDOException("Failed to execute delete statement for program ID {$program_id}, but no exception was thrown.");
     }
 
-    // 3. Verify deletion happened (rowCount)
+    // Verify deletion happened (rowCount)
     if ($stmt_del->rowCount() === 0) {
         // Should ideally not happen due to the initial check + FOR UPDATE, but handles edge cases.
         throw new Exception("Program found initially but could not be deleted (rowCount is 0). It might have been deleted by another process.");
@@ -75,38 +74,23 @@ try {
 
     // --- If deletion was successful (rowCount > 0), proceed to log ---
 
-    // 4. Insert *only* into the main LOG table
-    // Store essential info here. Consider adding a `target_entity_id` column to LOG
-    // or a `details` column in the future if more info is needed directly in the log.
+    // Insert *only* into the main LOG table
     $log_action_details = "Deleted Program: Name='{$program_name_deleted}', ID={$program_id}"; // Example detail
-    $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
-    // Consider adding columns to LOG like: , target_entity_id, details
-    // And values like: , :target_id, :details
+    $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
     $stmt_log = $conn->prepare($sql_log);
     $stmt_log->bindParam(':actor_id', $admin_actor_id, PDO::PARAM_INT);
     $stmt_log->bindValue(':action_type', LOG_ACTION_TYPE_DELETE_PROGRAM, PDO::PARAM_STR);
     $stmt_log->bindValue(':log_type', LOG_TYPE_PROGRAM, PDO::PARAM_STR);
-    // If adding columns:
-    // $stmt_log->bindParam(':target_id', $program_id, PDO::PARAM_INT);
-    // $stmt_log->bindParam(':details', $log_action_details, PDO::PARAM_STR);
-
 
     if (!$stmt_log->execute()) {
         // If logging fails, roll back the deletion.
         throw new PDOException("Successfully deleted program ID {$program_id} but failed to insert the base log entry. Rolling back deletion.");
     }
-    // $log_id = $conn->lastInsertId(); // We get the log_id but don't use it further here.
 
-    // 5. *** REMOVED INSERT INTO LOG_PROGRAM ***
-    // We do not insert into LOG_PROGRAM for delete actions because the program_id no longer exists,
-    // which would violate the foreign key constraint `log_program_ibfk_2`.
-
-    // 6. Commit Transaction - Only if delete AND main logging succeeded
+    // Commit Transaction - Only if delete AND main logging succeeded
     $conn->commit();
     http_response_code(200); // OK
     $response['success'] = "Program '{$program_name_deleted}' (ID: {$program_id}) deleted successfully.";
-    // Include the logged detail for confirmation if desired
-    // $response['log_details'] = $log_action_details;
     echo json_encode($response);
 
 } catch (PDOException $e) {

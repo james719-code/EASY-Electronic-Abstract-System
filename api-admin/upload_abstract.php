@@ -7,9 +7,8 @@ define('LOG_ACTION_TYPE_CREATE_ABSTRACT', 'CREATE_ABSTRACT');
 define('LOG_TYPE_ABSTRACT', 'ABSTRACT');
 
 // --- Configuration ---
-// Define the relative path to the upload directory from this script's location
-// Adjust '../pdf/' if your directory structure is different.
-$uploadDir = '../pdf/'; // Relative path: one level up, then into 'pdf/'
+$uploadDir = '../pdf/';
+
 // Ensure the upload directory exists and is writable
 if (!is_dir($uploadDir)) {
     // Attempt to create it (optional, might fail due to permissions)
@@ -27,15 +26,12 @@ if (!is_writable($uploadDir)) {
     exit;
 }
 
-
-// Assuming config.php provides the $conn PDO object
-// Make sure the path is correct relative to *this* script file
-include '../api-general/config.php'; // Check this path
+include '../api-general/config.php'; 
 
 $response = [];
 
 // --- Authentication Check ---
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'user']) || !isset($_SESSION['account_id'])) {
+if (!isset($_SESSION['user_type']) || !in_array($_SESSION['user_type'], ['Admin', 'User']) || !isset($_SESSION['account_id'])) {
     http_response_code(403); // Forbidden
     echo json_encode(['error' => 'Access denied. You must be logged in to submit an abstract.']);
     exit;
@@ -158,22 +154,16 @@ if (isset($abstract_type)) {
 if (!empty($errors)) {
     http_response_code(400);
     $response['error'] = implode(' ', $errors);
-    // If file was moved successfully but other errors occurred, we might want to delete it.
-    // For simplicity, we don't add that cleanup here. The file will remain in the pdf/ folder.
-    // Consider implementing cleanup if this is undesirable.
     echo json_encode($response);
     exit;
 }
-
-// At this point, file should be successfully moved to $fileInfo['location']
-// and all other text inputs are validated. Proceed with database operations.
 
 // --- Database Operations ---
 try {
     $conn->beginTransaction();
 
-    // 1. Insert into ABSTRACT table
-    $sql_abstract = "INSERT INTO ABSTRACT (title, description, researchers, citation, abstract_type) VALUES (:title, :description, :researchers, :citation, :type)";
+    // Insert into ABSTRACT table
+    $sql_abstract = "INSERT INTO abstract (title, description, researchers, citation, abstract_type) VALUES (:title, :description, :researchers, :citation, :type)";
     $stmt_abstract = $conn->prepare($sql_abstract);
     $stmt_abstract->bindParam(':title', $title, PDO::PARAM_STR);
     $stmt_abstract->bindParam(':description', $description, PDO::PARAM_STR);
@@ -186,8 +176,8 @@ try {
     }
     $new_abstract_id = $conn->lastInsertId();
 
-    // 2. Insert into FILE_DETAIL table (Using stored file path and size)
-    $sql_file = "INSERT INTO FILE_DETAIL (file_location, file_size, abstract_id) VALUES (:location, :size, :abstract_id)";
+    // Insert into FILE_DETAIL table (Using stored file path and size)
+    $sql_file = "INSERT INTO file_detail (file_location, file_size, abstract_id) VALUES (:location, :size, :abstract_id)";
     $stmt_file = $conn->prepare($sql_file);
     // Use the file info captured earlier
     $stmt_file->bindParam(':location', $fileInfo['location'], PDO::PARAM_STR);
@@ -198,16 +188,16 @@ try {
         throw new PDOException("Failed to insert file details.");
     }
 
-    // 3. Insert into THESIS_ABSTRACT or DISSERTATION_ABSTRACT table
+    // Insert into THESIS_ABSTRACT or DISSERTATION_ABSTRACT table
     if ($abstract_type === 'Thesis') {
-        $stmt_check_prog = $conn->prepare("SELECT 1 FROM PROGRAM WHERE program_id = :pid");
+        $stmt_check_prog = $conn->prepare("SELECT 1 FROM program WHERE program_id = :pid");
         $stmt_check_prog->bindParam(':pid', $program_id, PDO::PARAM_INT);
         $stmt_check_prog->execute();
         if ($stmt_check_prog->fetchColumn() === false) {
              throw new Exception("Invalid Program ID provided for Thesis.");
         }
 
-        $sql_thesis = "INSERT INTO THESIS_ABSTRACT (abstract_id, program_id) VALUES (:abstract_id, :program_id)";
+        $sql_thesis = "INSERT INTO thesis_abstract (thesis_id, program_id) VALUES (:abstract_id, :program_id)";
         $stmt_thesis = $conn->prepare($sql_thesis);
         $stmt_thesis->bindParam(':abstract_id', $new_abstract_id, PDO::PARAM_INT);
         $stmt_thesis->bindParam(':program_id', $program_id, PDO::PARAM_INT);
@@ -215,14 +205,14 @@ try {
             throw new PDOException("Failed to insert thesis details.");
         }
     } elseif ($abstract_type === 'Dissertation') {
-        $stmt_check_dept = $conn->prepare("SELECT 1 FROM DEPARTMENT WHERE department_id = :did");
+        $stmt_check_dept = $conn->prepare("SELECT 1 FROM department WHERE department_id = :did");
         $stmt_check_dept->bindParam(':did', $department_id, PDO::PARAM_INT);
         $stmt_check_dept->execute();
         if ($stmt_check_dept->fetchColumn() === false) {
              throw new Exception("Invalid Department ID provided for Dissertation.");
         }
 
-        $sql_diss = "INSERT INTO DISSERTATION_ABSTRACT (abstract_id, department_id) VALUES (:abstract_id, :department_id)";
+        $sql_diss = "INSERT INTO dissertation_abstract (dissertation_id, department_id) VALUES (:abstract_id, :department_id)";
         $stmt_diss = $conn->prepare($sql_diss);
         $stmt_diss->bindParam(':abstract_id', $new_abstract_id, PDO::PARAM_INT);
         $stmt_diss->bindParam(':department_id', $department_id, PDO::PARAM_INT);
@@ -231,8 +221,8 @@ try {
         }
     }
 
-    // 4. Insert into LOG table
-    $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+    // Insert into LOG table
+    $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
     $stmt_log = $conn->prepare($sql_log);
     $stmt_log->bindParam(':actor_id', $actor_account_id, PDO::PARAM_INT);
     $stmt_log->bindValue(':action_type', LOG_ACTION_TYPE_CREATE_ABSTRACT, PDO::PARAM_STR);
@@ -243,8 +233,8 @@ try {
     }
     $log_id = $conn->lastInsertId();
 
-    // 5. Insert into LOG_ABSTRACT detail table
-    $sql_log_detail = "INSERT INTO LOG_ABSTRACT (log_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
+    // Insert into LOG_ABSTRACT detail table
+    $sql_log_detail = "INSERT INTO log_abstract (log_abstract_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
     $stmt_log_detail = $conn->prepare($sql_log_detail);
     $stmt_log_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
     $stmt_log_detail->bindParam(':abstract_id', $new_abstract_id, PDO::PARAM_INT);
@@ -254,7 +244,7 @@ try {
         throw new PDOException("Failed to insert abstract log details into LOG_ABSTRACT table.");
     }
 
-    // 6. Commit Transaction
+    // Commit Transaction
     $conn->commit();
     http_response_code(201); // Created
     $response['success'] = "Abstract and file uploaded successfully.";

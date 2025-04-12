@@ -5,7 +5,6 @@ session_start();
 header('Content-Type: application/json'); // Set response type to JSON
 
 // --- Dependencies ---
-// Adjust the path if your config file is located elsewhere
 require_once '../api-general/config.php'; // Provides $conn (PDO connection)
 
 // --- Authentication ---
@@ -28,9 +27,9 @@ $baseSql = "
         a.title,
         a.researchers,
         p.program_name
-    FROM ABSTRACT a
-    JOIN THESIS_ABSTRACT ta ON a.abstract_id = ta.abstract_id
-    JOIN PROGRAM p ON ta.program_id = p.program_id
+    FROM abstract a
+    JOIN thesis_abstract ta ON a.abstract_id = ta.thesis_id
+    JOIN program p ON ta.program_id = p.program_id
     WHERE a.abstract_type = 'Thesis' -- Ensure we only get Thesis abstracts
 ";
 
@@ -59,7 +58,6 @@ if (!empty($whereClauses)) {
 }
 
 // --- Sorting ---
-// Whitelist allowed sort columns and directions (remains the same)
 $allowedSorts = [
     'id_desc' => 'a.abstract_id DESC',
     'id_asc' => 'a.abstract_id ASC',
@@ -73,15 +71,10 @@ $allowedSorts = [
 $orderByClause = $allowedSorts[$sortBy] ?? $allowedSorts['id_desc'];
 $baseSql .= " ORDER BY " . $orderByClause;
 
-// Consider adding LIMIT and OFFSET for pagination in the future
-// $baseSql .= " LIMIT ? OFFSET ?"; // If adding pagination, add bindings for limit/offset here
-
 // --- Database Execution ---
 try {
     $stmt = $conn->prepare($baseSql);
 
-    // Execute the statement by passing the bindings array directly
-    // PDO maps the array elements to the '?' placeholders in order
     $stmt->execute($bindings);
 
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);

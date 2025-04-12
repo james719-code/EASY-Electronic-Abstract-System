@@ -1,15 +1,10 @@
 <?php
 // config.php - Database Configuration
 
-// Enable error reporting for debugging (remove or adjust in production)
-// Configure in php.ini or server config ideally
-// ini_set('display_errors', 1);
-// ini_set('display_startup_errors', 1);
-// error_reporting(E_ALL);
 
 // Database credentials
 $host = "localhost";
-$dbname = "electronic_abstract_system_database";
+$dbname = "easy_database";
 $username = "root"; // Replace with your database username
 $password = "";     // Replace with your database password
 

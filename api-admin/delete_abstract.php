@@ -1,21 +1,11 @@
 <?php
-// Enable error reporting for debugging (remove or adjust in production)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Ensure errors are logged
-ini_set('log_errors', 1);
-// ini_set('error_log', '/path/to/your/php-error.log'); // Optional: specify log file
-
-// Start session to access session variables like account_id
 session_start();
 
 // Set content type to JSON
 header('Content-Type: application/json');
 
 // --- Configuration ---
-$baseUploadDir = realpath('../pdf/'); // Adjust path if necessary
+$baseUploadDir = realpath('../pdf/');
 if ($baseUploadDir === false) {
     http_response_code(500);
     error_log("Server configuration error: Base upload directory '../pdf/' does not exist or is inaccessible for deletion script.");
@@ -27,10 +17,9 @@ if ($baseUploadDir === false) {
 define('LOG_ACTION_TYPE_DELETE_ABSTRACT', 'DELETE_ABSTRACT');
 define('LOG_TYPE_ABSTRACT', 'ABSTRACT');
 
-// Assuming config.php establishes the PDO connection $conn
-include '../api-general/config.php'; // Adjust path as necessary
+include '../api-general/config.php';
 
-$response = []; // Initialize response array
+$response = [];
 
 // --- Authentication and Authorization ---
 if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'Admin' || !isset($_SESSION['account_id'])) {
@@ -58,6 +47,7 @@ if ($abstract_id_input === false || $abstract_id_input <= 0) {
     echo json_encode($response);
     exit;
 }
+
 $abstractId = $abstract_id_input;
 
 // Variables to store fetched data
@@ -68,10 +58,10 @@ $real_file_location = null;
 try {
     $conn->beginTransaction();
 
-    // Step 1: Get Abstract Title AND File Location
+    // Get Abstract Title AND File Location
     $stmt_get_info = $conn->prepare("SELECT a.title, fd.file_location
-                                     FROM ABSTRACT a
-                                     LEFT JOIN FILE_DETAIL fd ON a.abstract_id = fd.abstract_id
+                                     FROM abstract a
+                                     LEFT JOIN file_detail fd ON a.abstract_id = fd.abstract_id
                                      WHERE a.abstract_id = :abstract_id
                                      LIMIT 1");
     $stmt_get_info->bindParam(':abstract_id', $abstractId, PDO::PARAM_INT);
@@ -81,7 +71,7 @@ try {
 
     if (!$abstract_info) {
         $conn->rollBack();
-        http_response_code(404); // Not Found
+        http_response_code(404);
         $response['error'] = 'Abstract not found.';
         echo json_encode($response);
         exit;
@@ -90,7 +80,7 @@ try {
     $title_deleted = $abstract_info['title'];
     $file_location_to_delete = $abstract_info['file_location'];
 
-    // Step 2: Validate File Path (if exists)
+    // Validate File Path
     if ($file_location_to_delete) {
         $real_file_location = realpath($file_location_to_delete);
         if ($real_file_location === false || strpos($real_file_location, $baseUploadDir) !== 0) {
@@ -103,12 +93,11 @@ try {
         }
     }
 
-    // Step 3: Log the Deletion Action *BEFORE* deleting the abstract
-    // This ensures the foreign key constraint is met when inserting into LOG_ABSTRACT
+    // Log the Deletion Action *BEFORE* deleting the abstract
     $log_id = null;
     try {
-        // 3a: Insert into LOG table
-        $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+        // Insert into LOG table
+        $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
         $stmt_log = $conn->prepare($sql_log);
         $stmt_log->bindParam(':actor_id', $admin_actor_id, PDO::PARAM_INT);
         $stmt_log->bindValue(':action_type', LOG_ACTION_TYPE_DELETE_ABSTRACT, PDO::PARAM_STR);
@@ -119,11 +108,11 @@ try {
         $log_id = $conn->lastInsertId();
         $stmt_log->closeCursor();
 
-        // 3b: Insert into LOG_ABSTRACT detail table
-        $sql_log_detail = "INSERT INTO LOG_ABSTRACT (log_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
+        // Insert into LOG_ABSTRACT detail table
+        $sql_log_detail = "INSERT INTO log_abstract (log_abstract_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
         $stmt_log_detail = $conn->prepare($sql_log_detail);
         $stmt_log_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
-        $stmt_log_detail->bindParam(':abstract_id', $abstractId, PDO::PARAM_INT); // Abstract still exists here!
+        $stmt_log_detail->bindParam(':abstract_id', $abstractId, PDO::PARAM_INT);
         $stmt_log_detail->bindParam(':account_id', $admin_actor_id, PDO::PARAM_INT);
          if (!$stmt_log_detail->execute()) {
              throw new PDOException("Failed to insert abstract log details for abstract deletion.");
@@ -138,9 +127,8 @@ try {
          throw new Exception("Database logging failed. Operation cancelled.", 0, $log_e); // Trigger rollback in main catch
     }
 
-    // Step 4: Delete from the main ABSTRACT table.
-    // ON DELETE CASCADE should handle related DB records.
-    $stmt_delete_abstract = $conn->prepare("DELETE FROM ABSTRACT WHERE abstract_id = :abstract_id");
+    // Delete from the main ABSTRACT table.
+    $stmt_delete_abstract = $conn->prepare("DELETE FROM abstract WHERE abstract_id = :abstract_id");
     $stmt_delete_abstract->bindParam(':abstract_id', $abstractId, PDO::PARAM_INT);
     $deleteSuccess = $stmt_delete_abstract->execute();
 
@@ -154,8 +142,8 @@ try {
     if ($rowCount > 0) {
         // DB Deletion successful
 
-        // Step 5: Delete the actual file from filesystem (if applicable)
-        if ($real_file_location) { // Only attempt if a valid, secured path was found
+        // Delete the actual file from filesystem 
+        if ($real_file_location) {
             if (file_exists($real_file_location)) {
                  if (is_writable($real_file_location)) {
                      if (!unlink($real_file_location)) {
@@ -175,14 +163,12 @@ try {
              error_log("No valid file location associated with abstract ID: {$abstractId}, skipping file unlink.");
         }
 
-        // Step 6: Commit transaction (Logging, DB delete, and File unlink (if needed) all succeeded)
+        // Commit transaction
         $conn->commit();
         $response['success'] = "Abstract ID {$abstractId} ('{$title_deleted}') and associated data/file deleted successfully.";
         echo json_encode($response);
 
     } else {
-        // Abstract record was not found during DELETE, despite being found earlier? Race condition?
-        // Rollback because the state is inconsistent (log entry exists, but abstract didn't delete)
         error_log("Failed to delete abstract ID {$abstractId}. rowCount was 0 during DELETE, rolling back log entry.");
         throw new Exception("Abstract could not be deleted. It might have been deleted by another process after logging.");
     }

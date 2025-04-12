@@ -2,8 +2,6 @@
 session_start();
 header('Content-Type: application/json');
 
-// Assuming config.php establishes the PDO connection $conn
-// and sets appropriate error reporting for your environment
 include '../api-general/config.php';
 
 $response = [];
@@ -24,8 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // --- Input Retrieval and Validation ---
-// FILTER_SANITIZE_STRING is deprecated in PHP 8.1+. Use FILTER_SANITIZE_SPECIAL_CHARS.
-// Using FILTER_DEFAULT as a fallback if SANITIZE_STRING isn't available/deprecated.
 $department_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT);
 $department_name = trim(filter_input(INPUT_POST, 'department_name', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
 $department_initials = trim(filter_input(INPUT_POST, 'department_initials', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
@@ -42,14 +38,13 @@ if (empty($department_name)) {
     echo json_encode($response);
     exit;
 }
-// Optional: Add length validation etc. if needed
 
 // --- Database Operation ---
 try {
     $conn->beginTransaction();
 
-    // 1. Optional but good: Check if department exists before updating
-    $stmt_check = $conn->prepare("SELECT 1 FROM DEPARTMENT WHERE department_id = :id");
+    // Optional but good: Check if department exists before updating
+    $stmt_check = $conn->prepare("SELECT 1 FROM department WHERE department_id = :id");
     $stmt_check->bindParam(':id', $department_id, PDO::PARAM_INT);
     $stmt_check->execute();
     if ($stmt_check->fetchColumn() === false) {
@@ -57,8 +52,8 @@ try {
         throw new Exception("Department with ID " . $department_id . " not found.", 404); // Use specific exception code
     }
 
-    // 2. Update the department details
-    $sql_update = "UPDATE DEPARTMENT SET department_name = :name, department_initials = :initials WHERE department_id = :id";
+    // Update the department details
+    $sql_update = "UPDATE department SET department_name = :name, department_initials = :initials WHERE department_id = :id";
     $stmt_update = $conn->prepare($sql_update);
     $stmt_update->bindParam(':name', $department_name, PDO::PARAM_STR);
     // Bind initials or NULL
@@ -76,17 +71,13 @@ try {
 
     // Check if any rows were actually changed (optional, but good feedback)
     if ($stmt_update->rowCount() === 0) {
-        // No rows affected - maybe data was the same? Treat as success or specific message?
-        // For simplicity, we'll treat it as success here, but you could add a specific response.
         error_log("Update Department: No rows affected for ID $department_id. Data might be identical.");
     }
 
-    // --- NEW LOGGING ACTIONS (Replaces old log_action) ---
-
-    // 3. Insert into the main LOG table
+    // Insert into the main LOG table
     $log_action_type = 'UPDATE_DEPARTMENT'; // Standardized action type
     $log_type = 'DEPARTMENT';            // Specific log category
-    $sql_log_main = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+    $sql_log_main = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
     $stmt_log_main = $conn->prepare($sql_log_main);
     $stmt_log_main->bindParam(':actor_id', $admin_actor_id, PDO::PARAM_INT);
     $stmt_log_main->bindParam(':action_type', $log_action_type, PDO::PARAM_STR);
@@ -97,8 +88,8 @@ try {
     }
     $new_log_id = $conn->lastInsertId(); // Get the ID of the general log entry
 
-    // 4. Insert into the specific LOG_DEPARTMENT table
-    $sql_log_dept_detail = "INSERT INTO LOG_DEPARTMENT (log_id, department_id, admin_account_id) VALUES (:log_id, :dept_id, :admin_id)";
+    // Insert into the specific LOG_DEPARTMENT table
+    $sql_log_dept_detail = "INSERT INTO log_department (log_department_id, department_id, admin_id) VALUES (:log_id, :dept_id, :admin_id)";
     $stmt_log_dept_detail = $conn->prepare($sql_log_dept_detail);
     $stmt_log_dept_detail->bindParam(':log_id', $new_log_id, PDO::PARAM_INT);
     $stmt_log_dept_detail->bindParam(':dept_id', $department_id, PDO::PARAM_INT); // The ID of the dept being updated
@@ -110,7 +101,7 @@ try {
 
     // --- End New Logging Actions ---
 
-    // 5. Commit the transaction
+    // Commit the transaction
     $conn->commit();
 
     // --- Success Response ---

@@ -49,8 +49,8 @@ $abstract_id = $abstract_id_input;
 try {
     // --- Fetch File Location, Size, and Abstract Title ---
     $stmt_file = $conn->prepare("SELECT fd.file_location, fd.file_size, a.title
-                                 FROM FILE_DETAIL fd
-                                 JOIN ABSTRACT a ON fd.abstract_id = a.abstract_id
+                                 FROM file_detail fd
+                                 JOIN abstract a ON fd.abstract_id = a.abstract_id
                                  WHERE fd.abstract_id = :id
                                  LIMIT 1");
     $stmt_file->bindParam(':id', $abstract_id, PDO::PARAM_INT);
@@ -70,7 +70,7 @@ try {
     $abstract_title = $file_details['title'] ?? 'Untitled Abstract';
 
     // --- Security and File System Checks ---
-    // 1. Security: Ensure the path is within the designated upload directory
+    // Security: Ensure the path is within the designated upload directory
     $real_file_location = realpath($file_location);
     // Check if realpath resolved correctly and if it starts with the base upload directory path
     if ($real_file_location === false || strpos($real_file_location, $baseUploadDir) !== 0) {
@@ -80,7 +80,7 @@ try {
          exit;
     }
 
-    // 2. Existence Check
+    // Existence Check
     if (!file_exists($real_file_location)) {
         error_log("File not found on disk at location: {$real_file_location} (DB Path: {$file_location}) for Abstract ID: {$abstract_id}");
         http_response_code(404);
@@ -88,7 +88,7 @@ try {
         exit;
     }
 
-    // 3. Readability Check
+    // Readability Check
     if (!is_readable($real_file_location)) {
         error_log("File not readable at location: {$real_file_location} for Abstract ID: {$abstract_id}");
         http_response_code(500); // Server error (permissions likely)
@@ -100,8 +100,8 @@ try {
     try {
         $conn->beginTransaction();
 
-        // 1. Insert into LOG table
-        $sql_log = "INSERT INTO LOG (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
+        //  Insert into LOG table
+        $sql_log = "INSERT INTO log (actor_account_id, action_type, log_type) VALUES (:actor_id, :action_type, :log_type)";
         $stmt_log = $conn->prepare($sql_log);
         $stmt_log->bindParam(':actor_id', $actor_account_id, PDO::PARAM_INT);
         $stmt_log->bindValue(':action_type', LOG_ACTION_TYPE_VIEW_ABSTRACT, PDO::PARAM_STR);
@@ -110,7 +110,7 @@ try {
         $log_id = $conn->lastInsertId();
 
         // 2. Insert into LOG_ABSTRACT detail table
-        $sql_log_detail = "INSERT INTO LOG_ABSTRACT (log_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
+        $sql_log_detail = "INSERT INTO log_abstract (log_abstract_id, abstract_id, account_id) VALUES (:log_id, :abstract_id, :account_id)";
         $stmt_log_detail = $conn->prepare($sql_log_detail);
         $stmt_log_detail->bindParam(':log_id', $log_id, PDO::PARAM_INT);
         $stmt_log_detail->bindParam(':abstract_id', $abstract_id, PDO::PARAM_INT);
@@ -124,11 +124,9 @@ try {
             $conn->rollBack();
          }
         error_log("Failed to log abstract view (Abstract ID: {$abstract_id}, User ID: {$actor_account_id}): " . $log_e->getMessage());
-        // Continue serving the file even if logging fails.
     }
 
     // --- Send HTTP Headers for File ---
-    // Clear any potential previous output
     if (ob_get_level()) {
         ob_end_clean();
     }
@@ -145,8 +143,6 @@ try {
     // header('Accept-Ranges: bytes'); // Optional: Only if server supports range requests efficiently
 
     // --- Output File Content ---
-    // Use readfile() to output the file directly from the verified path
-    // It's generally more memory efficient than file_get_contents for large files.
     readfile($real_file_location);
 
     // --- Stop Execution ---

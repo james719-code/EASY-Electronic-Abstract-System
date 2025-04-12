@@ -1,17 +1,10 @@
 <?php
 // api-admin/fetch_departments.php
 
-// Enable error reporting for debugging (remove or adjust in production)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 session_start(); // Start session for auth check
 header('Content-Type: application/json');
 
-// Assuming config.php establishes the PDO connection $conn
-// Use require for critical includes
-require '../api-general/config.php'; // Adjust path if needed
+require '../api-general/config.php';
 
 // Response array
 $response = [];
@@ -28,14 +21,13 @@ if (!isset($_SESSION['account_id']) || !isset($_SESSION['user_type']) || $_SESSI
 $searchTerm = trim($_GET['search'] ?? '');
 // No other filters needed for departments based on original script
 
-// --- Build SQL Query with Positional Placeholders (?) ---
 $sql = "SELECT
             department_id,
             department_name,
             department_initials
         FROM
-            DEPARTMENT -- Correct table name
-        WHERE 1=1"; // Start with 1=1 for easy AND appending
+            department
+        WHERE 1=1"; 
 
 // Array to hold parameter values for positional placeholders IN ORDER
 $queryParams = [];
@@ -46,7 +38,6 @@ if (!empty($searchTerm)) {
     $sql .= " AND (department_name LIKE ? OR department_initials LIKE ?)";
     // Prepare the search term value
     $searchParamValue = '%' . $searchTerm . '%';
-    // Add the value TWICE to the array, matching the two '?'
     $queryParams[] = $searchParamValue;
     $queryParams[] = $searchParamValue;
 }

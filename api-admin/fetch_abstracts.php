@@ -1,27 +1,16 @@
 <?php
-// Enable error reporting for debugging (remove/adjust in production)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Ensure errors are logged but not necessarily displayed in production
-// ini_set('display_errors', 0);
-// ini_set('log_errors', 1); // Make sure logging is enabled
-
 // Set content type to JSON
 header('Content-Type: application/json');
 
-// Assuming config.php establishes the PDO connection $conn
-include '../api-general/config.php'; // Adjust path as necessary
+include '../api-general/config.php';
 
-$response = []; // Initialize response array
+$response = [];
 
 // --- Input Handling ---
 $searchTerm = trim($_GET['search'] ?? '');
-$filterByType = trim($_GET['filterByType'] ?? ''); // e.g., 'Thesis', 'Dissertation'
+$filterByType = trim($_GET['filterByType'] ?? '');
 
 // --- Query Parameters Array ---
-// This array will hold the values for the positional placeholders (?) in order.
 $queryParams = [];
 
 // --- Build SQL Query using Positional Placeholders ---
@@ -44,20 +33,19 @@ try {
                     ELSE NULL
                 END AS related_entity_initials
             FROM
-                ABSTRACT a
+                abstract a
             LEFT JOIN
-                THESIS_ABSTRACT t ON a.abstract_id = t.abstract_id AND a.abstract_type = 'Thesis'
+                thesis_abstract t ON a.abstract_id = t.thesis_id AND a.abstract_type = 'Thesis'
             LEFT JOIN
-                PROGRAM p ON t.program_id = p.program_id
+                program p ON t.program_id = p.program_id
             LEFT JOIN
-                DISSERTATION_ABSTRACT d ON a.abstract_id = d.abstract_id AND a.abstract_type = 'Dissertation'
+                dissertation_abstract d ON a.abstract_id = d.dissertation_id AND a.abstract_type = 'Dissertation'
             LEFT JOIN
-                DEPARTMENT dpt ON d.department_id = dpt.department_id
+                department dpt ON d.department_id = dpt.department_id
             WHERE 1=1"; // Start with 1=1 for easy appending
 
     // Apply search filter if a search term is provided
     if (!empty($searchTerm)) {
-        // Append the clause with four positional placeholders (?)
         $sql .= " AND (a.title LIKE ? OR a.researchers LIKE ? OR a.citation LIKE ? OR a.description LIKE ?)";
         // Prepare the search value ONCE
         $searchValue = '%' . $searchTerm . '%';
@@ -77,8 +65,6 @@ try {
     }
 
     // --- Sorting ---
-    // Apply default sorting (or implement dynamic sorting carefully)
-    // No placeholders needed for static ORDER BY
     $sql .= " ORDER BY a.title ASC";
 
     // --- Prepare and Execute ---
