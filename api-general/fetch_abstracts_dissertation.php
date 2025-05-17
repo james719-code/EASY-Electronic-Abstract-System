@@ -16,7 +16,7 @@ if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'User' || !isse
 
 // --- Input Handling ---
 $searchTerm = $_GET['search'] ?? ''; // Default to empty string if not set
-$programId = $_GET['program'] ?? null; // Default to null if not set
+$programId = $_GET['department'] ?? null; // Default to null if not set
 $sortBy = $_GET['sort'] ?? 'id_desc'; // Default sort order
 
 // --- Parameter Validation & Query Building ---
@@ -46,7 +46,7 @@ if (!empty($searchTerm)) {
 
 // Add program filter
 if (!empty($programId) && is_numeric($programId)) { // Basic validation
-    $whereClauses[] = "ta.program_id = ?"; // One '?' for program_id = ?
+    $whereClauses[] = "ta.department_id = ?"; // One '?' for program_id = ?
     $bindings[] = (int)$programId; // Add the value to the bindings array
 }
 

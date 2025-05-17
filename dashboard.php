@@ -46,7 +46,7 @@ try {
     $stmt_departments_count->closeCursor();
 
     // --- Fetch Data for Dropdowns ---
-    $stmt_programs_dropdown = $conn->query("SELECT program_id, program_name FROM program ORDER BY program_name ASC");
+    $stmt_programs_dropdown = $conn->query("SELECT program_id, program_name, program_initials FROM program ORDER BY program_name ASC");
     $programs = $stmt_programs_dropdown->fetchAll(PDO::FETCH_ASSOC);
     $stmt_programs_dropdown->closeCursor();
 
@@ -130,6 +130,10 @@ try {
         .danger-zone p { color: #721c24; margin-bottom: 15px; }
         .danger-zone button { background-color: #dc3545; border-color: #dc3545; }
         .danger-zone button:hover { background-color: #c82333; border-color: #bd2130; }
+        .btn.danger-btn { background-color: #dc3545; color: white; border-color: #dc3545; }
+        .btn.danger-btn:hover { background-color: #c82333; border-color: #bd2130; }
+        .settings-actions { margin-top: 20px; text-align: right; }
+        .settings-actions .btn { margin-left: 10px;}
 
         /* Style for action buttons in settings */
         .settings-actions { margin-top: 20px; text-align: right; }
@@ -141,7 +145,7 @@ try {
             left: 0;
             width: 100%;
             height: 100%;
-            /* background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */ */ /* Set inline */
+            /* background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */ /* Set inline */
             display: flex; /* Use flexbox for centering */
             justify-content: center; /* Center horizontally */
             align-items: center; /* Center vertically */
@@ -361,7 +365,7 @@ try {
     <option value="">All Programs</option>
     <?php foreach ($programs as $program): ?>
         <option value="<?php echo htmlspecialchars($program['program_id']); ?>">
-            <?php echo htmlspecialchars($program['program_name']); ?>
+            <?php echo htmlspecialchars($program['program_initials']); ?>
         </option>
     <?php endforeach; ?>
 </select>
@@ -389,7 +393,7 @@ try {
     <span class="close-modal" onclick="closeEditAccountModal()">×</span>
     <h2>Edit Account</h2>
     <form id="editAccountForm">
-        <input type="hidden" id="editAccountId" name="account_id"> <!-- Changed name -->
+        <input type="hidden" id="editAccountId" name="editAccountId"> <!-- Changed name -->
         <input type="hidden" id="editAccountType" name="editAccountType">
 
         <div class="grid-container">
@@ -422,7 +426,7 @@ try {
                     <option value="">Select Program</option>
                     <?php foreach ($programs as $program): ?>
                         <option value="<?php echo htmlspecialchars($program['program_id']); ?>">
-                            <?php echo htmlspecialchars($program['program_name']); ?>
+                            <?php echo htmlspecialchars($program['program_initials']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -857,28 +861,28 @@ try {
         <!-- Member Cards Container -->
         <div class="team-cards-members-container">
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 1 Name"> <!-- Replace -->
-                <h3>Aubrey Rose C. Baluyo</h3> <p>Frontend Developer</p>
+                <img src="assets/baluyo.jpg" alt="Member 1 Name"> <!-- Replace -->
+                <h3>Aubrey Rose C. Baluyo</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 2 Name"> <!-- Replace -->
-                <h3>Jay P. Bayrante</h3> <p>Backend Developer</p>
+                <img src="assets/bayrante.jpg" alt="Member 2 Name"> <!-- Replace -->
+                <h3>Jay P. Bayrante</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 3 Name"> <!-- Replace -->
-                <h3>Kimberly Guevara</h3> <p>Database Administrator</p>
+                <img src="assets/guevara.jpg" alt="Member 3 Name"> <!-- Replace -->
+                <h3>Kimberly Guevara</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 4 Name"> <!-- Replace -->
-                <h3>Bell Anton P. Mahometano</h3> <p>UI/UX Designer</p>
+                <img src="assets/mahometano.jpg" alt="Member 4 Name"> <!-- Replace -->
+                <h3>Bell Anton P. Mahometano</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 5 Name"> <!-- Replace -->
-                <h3>Chris Vincent P. Payte</h3> <p>QA Tester</p>
+                <img src="assets/payte.jpg" alt="Member 5 Name"> <!-- Replace -->
+                <h3>Chris Vincent P. Payte</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 6 Name"> <!-- Replace -->
-                <h3>Aubrey Kate M. Pinto</h3> <p>Documentation Specialist</p>
+                <img src="assets/pinto.jpg" alt="Member 6 Name"> <!-- Replace -->
+                <h3>Aubrey Kate M. Pinto</h3> <p>Member</p>
             </div>
         </div>
     </div>
@@ -1171,6 +1175,7 @@ if(editAccountForm) {
         e.preventDefault();
         const formData = new FormData(this);
         const accountType = document.getElementById('editAccountType').value;
+        formData.append('account_id', loggedInAdminId); // Include logged-in admin ID
 
         if(accountType === 'User') {
             formData.delete('work_id');

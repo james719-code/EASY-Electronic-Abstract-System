@@ -27,17 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // --- Input Retrieval and Basic Sanitization ---
 $account_id_to_edit = filter_input(INPUT_POST, 'editAccountId', FILTER_VALIDATE_INT); // The account being edited
-$username = trim(filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING) ?? '');
-$name = trim(filter_input(INPUT_POST, 'name', FILTER_SANITIZE_STRING) ?? '');
-$sex = filter_input(INPUT_POST, 'sex', FILTER_SANITIZE_STRING);
+$username = trim(filter_input(INPUT_POST, 'username') ?? '');
+$name = trim(filter_input(INPUT_POST, 'name') ?? '');
+$sex = filter_input(INPUT_POST, 'sex');
 
 // User specific
-$academic_level = trim(filter_input(INPUT_POST, 'academic_level', FILTER_SANITIZE_STRING) ?? '');
+$academic_level = trim(filter_input(INPUT_POST, 'academic_level') ?? '');
 $program_id = filter_input(INPUT_POST, 'program_id', FILTER_VALIDATE_INT);
 
 // Admin specific
-$work_id = trim(filter_input(INPUT_POST, 'work_id', FILTER_SANITIZE_STRING) ?? '');
-$position = trim(filter_input(INPUT_POST, 'position', FILTER_SANITIZE_STRING) ?? '');
+$work_id = trim(filter_input(INPUT_POST, 'work_id') ?? '');
+$position = trim(filter_input(INPUT_POST, 'position') ?? '');
 
 
 // --- Basic Validation ---

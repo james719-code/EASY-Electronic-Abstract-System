@@ -25,12 +25,12 @@ $db_error_message = null;
 
 try {
     // Fetch all programs for filter dropdowns AND settings edit form
-    $stmtPrograms = $conn->query("SELECT program_id, program_name FROM program ORDER BY program_name ASC");
+    $stmtPrograms = $conn->query("SELECT program_id, program_name, program_initials FROM program ORDER BY program_name ASC");
     $programs = $stmtPrograms->fetchAll(PDO::FETCH_ASSOC);
     $stmtPrograms->closeCursor();
 
     // Fetch all departments for the dissertation filter dropdown
-    $stmtDepartments = $conn->query("SELECT department_id, department_name FROM department ORDER BY department_name ASC");
+    $stmtDepartments = $conn->query("SELECT department_id, department_name, department_initials FROM department ORDER BY department_name ASC");
     $departments = $stmtDepartments->fetchAll(PDO::FETCH_ASSOC);
     $stmtDepartments->closeCursor();
 
@@ -298,7 +298,7 @@ try {
     <h2>Search Thesis Abstracts</h2>
     <div class="search-filter-container">
         <input type="text" id="thesisSearchInput" placeholder="Search title, researchers...">
-        <select id="thesisProgramFilter"> <option value="">All Programs</option> <?php foreach ($programs as $program): ?> <option value="<?php echo htmlspecialchars($program['program_id']); ?>"> <?php echo htmlspecialchars($program['program_name']); ?> </option> <?php endforeach; ?> </select>
+        <select id="thesisProgramFilter"> <option value="">All Programs</option> <?php foreach ($programs as $program): ?> <option value="<?php echo htmlspecialchars($program['program_id']); ?>"> <?php echo htmlspecialchars($program['program_initials']); ?> </option> <?php endforeach; ?> </select>
         <select id="thesisSortBy"> <option value="id_desc">Newest First (by ID)</option> <option value="id_asc">Oldest First (by ID)</option> <option value="title_asc">Title (A-Z)</option> <option value="title_desc">Title (Z-A)</option> <option value="researchers_asc">Researchers (A-Z)</option> <option value="researchers_desc">Researchers (Z-A)</option> </select>
         <button id="thesisApplyFilters" class="btn primary-btn">Search</button>
     </div>
@@ -311,7 +311,7 @@ try {
    <h2>Search Dissertation Abstracts</h2>
    <div class="search-filter-container">
     <input type="text" id="dissSearchInput" placeholder="Search title, researchers...">
-    <select id="dissDepartmentFilter"> <option value="">All Departments</option> <?php foreach ($departments as $dept): ?> <option value="<?php echo htmlspecialchars($dept['department_id']); ?>"> <?php echo htmlspecialchars($dept['department_name']); ?> </option> <?php endforeach; ?> </select>
+    <select id="dissDepartmentFilter"> <option value="">All Departments</option> <?php foreach ($departments as $dept): ?> <option value="<?php echo htmlspecialchars($dept['department_id']); ?>"> <?php echo htmlspecialchars($dept['department_initials']); ?> </option> <?php endforeach; ?> </select>
     <select id="dissSortBy"> <option value="id_desc">Newest First (by ID)</option> <option value="id_asc">Oldest First (by ID)</option> <option value="title_asc">Title (A-Z)</option> <option value="title_desc">Title (Z-A)</option> <option value="researchers_asc">Researchers (A-Z)</option> <option value="researchers_desc">Researchers (Z-A)</option> </select>
     <button id="dissApplyFilters" class="btn primary-btn">Search</button>
 </div>
@@ -382,28 +382,28 @@ try {
         <!-- Member Cards Container -->
         <div class="team-cards-members-container">
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 1 Name"> <!-- Replace -->
-                <h3>Aubrey Rose C. Baluyo</h3> <p>Frontend Developer</p>
+                <img src="assets/baluyo.jpg" alt="Member 1 Name"> <!-- Replace -->
+                <h3>Aubrey Rose C. Baluyo</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 2 Name"> <!-- Replace -->
-                <h3>Jay P. Bayrante</h3> <p>Backend Developer</p>
+                <img src="assets/bayrante.jpg" alt="Member 2 Name"> <!-- Replace -->
+                <h3>Jay P. Bayrante</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 3 Name"> <!-- Replace -->
-                <h3>Kimberly Guevara</h3> <p>Database Administrator</p>
+                <img src="assets/guevara.jpg" alt="Member 3 Name"> <!-- Replace -->
+                <h3>Kimberly Guevara</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 4 Name"> <!-- Replace -->
-                <h3>Bell Anton P. Mahometano</h3> <p>UI/UX Designer</p>
+                <img src="assets/mahometano.jpg" alt="Member 4 Name"> <!-- Replace -->
+                <h3>Bell Anton P. Mahometano</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 5 Name"> <!-- Replace -->
-                <h3>Chris Vincent P. Payte</h3> <p>QA Tester</p>
+                <img src="assets/payte.jpg" alt="Member 5 Name"> <!-- Replace -->
+                <h3>Chris Vincent P. Payte</h3> <p>Member</p>
             </div>
             <div class="team-card">
-                <img src="images/placeholder_avatar.png" alt="Member 6 Name"> <!-- Replace -->
-                <h3>Aubrey Kate M. Pinto</h3> <p>Documentation Specialist</p>
+                <img src="assets/pinto.jpg" alt="Member 6 Name"> <!-- Replace -->
+                <h3>Aubrey Kate M. Pinto</h3> <p>Member</p>
             </div>
         </div>
     </div>
